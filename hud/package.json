@@ -1,0 +1,14 @@
+{
+  "name": "glacier-hud",
+  "version": "1.0.0",
+  "description": "Native GUI for the Glacier engine",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "HackOps Academy",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

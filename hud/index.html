@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GLACIER // HUD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --void:#080a10; --panel:#0e131c; --panel-2:#131a26; --line:#1e2836;
+    --cyan:#5fd7e0; --cyan-dim:#2c5f66; --crimson:#ff4d6d; --amber:#e6b45c;
+    --lime:#7fd88f; --grey:#5b6577; --text:#c9d4e3; --text-dim:#7b8699;
+    --mono:'JetBrains Mono','Share Tech Mono',ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      linear-gradient(180deg, rgba(95,215,224,0.03), transparent 200px),
+      repeating-linear-gradient(0deg, rgba(95,215,224,0.012) 0px, rgba(95,215,224,0.012) 1px, transparent 1px, transparent 3px),
+      var(--void);
+    color:var(--text); font-family:var(--mono); font-size:13px;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  ::selection{background:var(--cyan-dim); color:#fff;}
+  #topbar{
+    display:flex; align-items:center; gap:16px; padding:10px 18px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    flex-shrink:0; flex-wrap:wrap;
+  }
+  #brand{display:flex; align-items:center; gap:10px; letter-spacing:3px; font-weight:700;}
+  #brand .dot{width:9px; height:9px; border-radius:50%; background:var(--grey); box-shadow:0 0 8px var(--grey); transition:all .3s;}
+  #brand .dot.live{background:var(--lime); box-shadow:0 0 10px var(--lime); animation:pulse 2s infinite;}
+  #brand .dot.bad{background:var(--crimson); box-shadow:0 0 10px var(--crimson);}
+  #brand .credit{font-weight:400; letter-spacing:1px; font-size:10px; color:var(--text-dim); text-transform:none; margin-left:4px;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.5;}}
+  #connform{display:flex; gap:8px; align-items:center; margin-left:auto; flex-wrap:wrap;}
+  #connform input{
+    background:var(--void); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:6px 9px; border-radius:2px; outline:none; width:190px;
+  }
+  #connform input:focus{border-color:var(--cyan);}
+  button{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:6px 12px; border-radius:2px;
+    cursor:pointer; letter-spacing:0.5px; transition:all .15s;
+  }
+  button:hover{border-color:var(--cyan); color:var(--cyan); transform:translateY(-1px);}
+  button:active{transform:translateY(0);}
+  button.primary{border-color:var(--cyan-dim); color:var(--cyan);}
+  button.primary:hover{background:var(--cyan-dim); color:#fff;}
+  button.danger{border-color:#5c2733; color:var(--crimson);}
+  button.danger:hover{background:#5c2733; color:#fff;}
+  button.ghost{background:transparent; border-color:transparent; color:var(--text-dim);}
+  button.ghost:hover{color:var(--cyan); border-color:var(--line);}
+  button:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+  #connstatus{font-size:11px; color:var(--text-dim); min-width:100px;}
+
+  #scopebar{
+    display:flex; align-items:center; gap:8px; padding:6px 18px;
+    background:var(--panel-2); border-bottom:1px solid var(--line); font-size:11px;
+    color:var(--text-dim); display:none;
+  }
+  #scopebar.active{display:flex;}
+  #scopebar .pill{
+    background:rgba(95,215,224,0.1); border:1px solid var(--cyan-dim); color:var(--cyan);
+    padding:2px 10px; border-radius:12px; display:flex; align-items:center; gap:6px;
+  }
+  #scopebar .pill span.x{cursor:pointer; opacity:0.7;}
+  #scopebar .pill span.x:hover{opacity:1;}
+
+  #main{display:flex; flex:1; min-height:0;}
+  #sidebar{width:260px; flex-shrink:0; border-right:1px solid var(--line); background:var(--panel); overflow-y:auto; padding:14px 10px;}
+  #sidebar h3{font-size:11px; letter-spacing:2px; color:var(--text-dim); margin:8px 6px 8px;}
+  #sitetree{list-style:none;}
+  #sitetree li{padding:6px 8px; border-radius:2px; cursor:pointer; font-size:12px; word-break:break-all; color:var(--text-dim); border-left:2px solid transparent; transition:all .15s;}
+  #sitetree li:hover{background:var(--panel-2); color:var(--text);}
+  #sitetree li.active{border-left-color:var(--cyan); color:var(--cyan); background:var(--panel-2);}
+  #sidebar .empty{font-size:11px; color:var(--text-dim); padding:8px 6px;}
+
+  #content{flex:1; min-width:0; display:flex; flex-direction:column;}
+  #tabs{display:flex; border-bottom:1px solid var(--line); background:var(--panel); flex-shrink:0;}
+  .tab{padding:11px 20px; cursor:pointer; font-size:12px; letter-spacing:1.5px; color:var(--text-dim); border-bottom:2px solid transparent; user-select:none; transition:all .15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--cyan); border-bottom-color:var(--cyan);}
+  .tab .badge{display:inline-block; margin-left:6px; background:var(--panel-2); color:var(--text-dim); border-radius:8px; padding:1px 7px; font-size:10px;}
+
+  #panes{flex:1; overflow-y:auto; padding:20px;}
+  .pane{display:none;}
+  .pane.active{display:block; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .hud-box{border:1px solid var(--line); background:var(--panel); border-radius:3px; padding:16px; margin-bottom:16px; position:relative;}
+  .hud-box::before, .hud-box::after{content:''; position:absolute; width:10px; height:10px; border-color:var(--cyan-dim); opacity:0.7;}
+  .hud-box::before{top:-1px; left:-1px; border-top:1px solid; border-left:1px solid;}
+  .hud-box::after{bottom:-1px; right:-1px; border-bottom:1px solid; border-right:1px solid;}
+  .hud-box h4{font-size:11px; letter-spacing:2px; color:var(--text-dim); margin-bottom:12px;}
+
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .row + .row{margin-top:10px;}
+  input[type=text], input[type=number]{
+    background:var(--void); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:2px; outline:none; flex:1; min-width:200px;
+  }
+  input[type=number]{flex:0 0 90px; min-width:0;}
+  input:focus{border-color:var(--cyan);}
+  label.opt{font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:5px;}
+
+  select{
+    background:var(--void); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:2px; outline:none;
+  }
+  textarea{
+    background:var(--void); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:2px; outline:none;
+    width:100%; resize:vertical; box-sizing:border-box;
+  }
+  textarea:focus, select:focus{border-color:var(--cyan);}
+  .twocol{display:flex; gap:16px; align-items:flex-start;}
+  .twocol > .col{flex:1; min-width:0;}
+  .field-label{font-size:10px; letter-spacing:1px; color:var(--text-dim); margin:10px 0 4px;}
+  .field-label:first-child{margin-top:0;}
+  .respmeta{font-size:12px; margin-bottom:8px;}
+  .respmeta .code-2xx{color:#7fd88f;} .respmeta .code-3xx{color:#e6b45c;}
+  .respmeta .code-4xx, .respmeta .code-5xx{color:#ff4d6d;}
+
+  .barwrap{background:var(--void); border:1px solid var(--line); border-radius:3px; height:20px; overflow:hidden; margin-top:10px; position:relative;}
+  .bar{height:100%; background:linear-gradient(90deg, var(--cyan-dim), var(--cyan)); width:0%; transition:width .4s ease; box-shadow:0 0 12px var(--cyan-dim);}
+  .barlabel{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; letter-spacing:1px; color:var(--text);}
+
+  table{width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;}
+  th{text-align:left; color:var(--text-dim); font-weight:400; letter-spacing:1px; font-size:10px; padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  tr.rowhover{transition:background .15s;}
+  tr.rowhover:hover{background:var(--panel-2); cursor:pointer;}
+  tr.newrow{animation:rowFlash 1.2s ease;}
+  @keyframes rowFlash{0%{background:rgba(95,215,224,0.25);} 100%{background:transparent;}}
+  .risk{display:inline-block; padding:2px 8px; border-radius:2px; font-size:10px; letter-spacing:1px;}
+  .risk.High{background:rgba(255,77,109,0.15); color:var(--crimson); border:1px solid rgba(255,77,109,0.4);}
+  .risk.Medium{background:rgba(230,180,92,0.15); color:var(--amber); border:1px solid rgba(230,180,92,0.4);}
+  .risk.Low{background:rgba(127,216,143,0.15); color:var(--lime); border:1px solid rgba(127,216,143,0.4);}
+  .method{font-size:10px; padding:1px 6px; border-radius:2px; background:var(--panel-2); color:var(--text-dim);}
+  .warn-box{border:1px solid #5c2733; background:rgba(255,77,109,0.06); border-radius:3px; padding:12px; font-size:11px; color:var(--crimson); margin-top:10px;}
+
+  .stats{display:flex; gap:14px; flex-wrap:wrap;}
+  .stat{flex:1; min-width:120px; border:1px solid var(--line); border-radius:3px; padding:14px; background:var(--panel-2); text-align:center; transition:transform .15s;}
+  .stat:hover{transform:translateY(-2px);}
+  .stat .n{font-size:26px; font-weight:700; transition:all .3s;}
+  .stat .l{font-size:10px; letter-spacing:2px; color:var(--text-dim); margin-top:4px;}
+  .stat.High .n{color:var(--crimson);} .stat.Medium .n{color:var(--amber);} .stat.Low .n{color:var(--lime);}
+
+  #chartWrap{max-width:260px; margin:0 auto;}
+
+  #detail{
+    position:fixed; top:0; right:0; width:460px; height:100%; background:var(--panel);
+    border-left:1px solid var(--cyan-dim); box-shadow:-20px 0 40px rgba(0,0,0,0.5);
+    transform:translateX(100%); transition:transform .25s cubic-bezier(.2,.8,.2,1); z-index:50; overflow-y:auto; padding:20px;
+  }
+  #detail.open{transform:translateX(0);}
+  #detail h3{color:var(--cyan); font-size:14px; margin-bottom:14px; letter-spacing:1px;}
+  /* Global, not #detail-scoped: the same field()/<pre> markup renders
+     inside Repeater's response viewer and Fuzzer's result detail too -
+     scoping this to #detail only left those with browser-default
+     white-space:pre (no wrapping), so long response bodies/headers ran
+     straight off the edge of the box. overflow-wrap:anywhere covers the
+     case word-break alone doesn't: a single unbroken long token (a long
+     URL, a base64 blob, a long header value) with no spaces at all. */
+  .field{margin-bottom:14px; max-width:100%;}
+  .field .k{font-size:10px; color:var(--text-dim); letter-spacing:1.5px; margin-bottom:4px;}
+  .field .v{font-size:12px; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap; line-height:1.5; max-width:100%;}
+  pre{background:var(--void); border:1px solid var(--line); padding:10px; border-radius:3px; font-size:11px; overflow-x:auto; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; max-width:100%; box-sizing:border-box;}
+  #detailclose{position:absolute; top:14px; right:16px;}
+  .urllist{max-height:200px; overflow-y:auto; background:var(--void); border:1px solid var(--line); border-radius:3px; padding:8px; font-size:11px;}
+  .urllist div{padding:2px 0; word-break:break-all; color:var(--text-dim);}
+
+  .empty-state{color:var(--text-dim); font-size:12px; padding:30px; text-align:center; border:1px dashed var(--line); border-radius:4px;}
+  .muted{color:var(--text-dim); font-size:11px;}
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-track{background:var(--void);}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--cyan-dim);}
+
+  #toasts{position:fixed; bottom:20px; right:20px; z-index:100; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
+  .toast{
+    background:var(--panel-2); border:1px solid var(--line); border-left:3px solid var(--cyan);
+    color:var(--text); padding:10px 16px; border-radius:3px; font-size:12px; max-width:340px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4); animation:toastIn .25s ease;
+  }
+  .toast.error{border-left-color:var(--crimson);}
+  .toast.warn{border-left-color:var(--amber);}
+  .toast.success{border-left-color:var(--lime);}
+  .toast.fadeout{animation:toastOut .3s ease forwards;}
+  @keyframes toastIn{from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);}}
+  @keyframes toastOut{to{opacity:0; transform:translateX(20px);}}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="brand"><span class="dot" id="livedot"></span>GLACIER // HUD<span class="credit">made by HackOps Academy</span></div>
+  <div id="connform">
+    <input type="text" id="apiUrl" value="http://localhost:8090" placeholder="glacier API base URL">
+    <button class="primary" id="btnConnect">CONNECT</button>
+    <span id="connstatus">not connected</span>
+    <button class="ghost" id="btnExport" title="Export a report">EXPORT</button>
+    <button class="ghost danger" id="btnNewSession" title="Clear all captured data">NEW SESSION</button>
+  </div>
+</div>
+
+<div id="scopebar">
+  <span>SCOPE:</span>
+  <span class="pill" id="scopePill">all sites <span class="x" id="scopeClear">✕</span></span>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <h3>SITES</h3>
+    <ul id="sitetree"><li class="empty">connect to load sites</li></ul>
+  </div>
+
+  <div id="content">
+    <div id="tabs">
+      <div class="tab active" data-tab="overview">OVERVIEW</div>
+      <div class="tab" data-tab="spider">SPIDER</div>
+      <div class="tab" data-tab="ascan">ACTIVE SCAN</div>
+      <div class="tab" data-tab="alerts">ALERTS <span class="badge" id="alertBadge">0</span></div>
+      <div class="tab" data-tab="history">HISTORY</div>
+      <div class="tab" data-tab="repeater">REPEATER</div>
+      <div class="tab" data-tab="fuzzer">FUZZER</div>
+    </div>
+
+    <div id="panes">
+
+      <div class="pane active" id="pane-overview">
+        <div class="hud-box">
+          <h4>OPEN FINDINGS SUMMARY</h4>
+          <div class="row" style="align-items:flex-start;">
+            <div class="stats" style="flex:2;">
+              <div class="stat High"><div class="n" id="ov-high">0</div><div class="l">HIGH</div></div>
+              <div class="stat Medium"><div class="n" id="ov-medium">0</div><div class="l">MEDIUM</div></div>
+              <div class="stat Low"><div class="n" id="ov-low">0</div><div class="l">LOW</div></div>
+            </div>
+            <div id="chartWrap"><canvas id="riskChart" width="220" height="220"></canvas></div>
+          </div>
+        </div>
+        <div class="hud-box">
+          <h4>ENGINE STATUS</h4>
+          <p class="muted">Sites captured: <span id="ov-sites">0</span> &nbsp;|&nbsp; Live feed: <span id="ov-live">off</span></p>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-spider">
+        <div class="hud-box">
+          <h4>SPIDER CONTROL</h4>
+          <div class="row">
+            <input type="text" id="spiderUrl" placeholder="Target URL, e.g. https://target.example.com">
+            <input type="number" id="spiderDepth" value="2" title="max depth">
+            <input type="number" id="spiderPages" value="50" title="max pages">
+            <button class="primary" id="btnSpiderStart">START</button>
+          </div>
+          <div class="barwrap"><div class="bar" id="spiderBar"></div><div class="barlabel" id="spiderBarLabel">idle</div></div>
+        </div>
+        <div class="hud-box">
+          <h4>URLS DISCOVERED <span class="muted" id="spiderCount"></span></h4>
+          <div id="spiderResults" class="empty-state">no results yet</div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-ascan">
+        <div class="hud-box">
+          <h4>AUTHENTICATION (optional \u2014 for testing logged-in areas)</h4>
+          <div class="row">
+            <label class="opt"><input type="checkbox" id="authEnable"> Use authenticated session</label>
+            <select id="authMode" style="background:var(--void); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12px; padding:8px; border-radius:2px;">
+              <option value="form">Form login</option>
+              <option value="cookie">Cookie</option>
+            </select>
+          </div>
+          <div id="authFormFields" class="row" style="margin-top:8px;">
+            <input type="text" id="authLoginUrl" placeholder="Login URL, e.g. https://target.example.com/login">
+            <input type="text" id="authUsername" placeholder="Username">
+            <input type="text" id="authPassword" placeholder="Password">
+          </div>
+          <div id="authFormFields2" class="row" style="margin-top:8px;">
+            <input type="text" id="authSuccessIndicator" placeholder="Text that appears when login succeeds (optional)">
+            <input type="text" id="authLogoutIndicator" placeholder="Text that appears when logged out (optional)">
+          </div>
+          <div id="authCookieFields" class="row" style="margin-top:8px; display:none;">
+            <input type="text" id="authCookieHeader" placeholder="Cookie header, e.g. session=abc123">
+          </div>
+        </div>
+        <div class="hud-box">
+          <h4>FULL-SITE SCAN (crawl + auto-scan every discovered URL)</h4>
+          <div class="row">
+            <input type="text" id="pipelineUrl" placeholder="Starting URL, e.g. https://target.example.com">
+            <input type="number" id="pipelineDepth" value="2" title="max depth">
+            <input type="number" id="pipelinePages" value="50" title="max pages">
+            <button class="primary" id="btnPipelineStart">CRAWL + SCAN</button>
+          </div>
+          <label class="opt" style="margin-top:10px;"><input type="checkbox" id="pipelineConfirm"> I confirm I am authorized to actively test this target</label>
+          <div class="warn-box">This crawls the entire site AND sends real test payloads to every URL with parameters it finds. Only run against systems you own or are authorized to test.</div>
+          <div class="barwrap"><div class="bar" id="pipelineBar" style="width:0%"></div><div class="barlabel" id="pipelineBarLabel">idle</div></div>
+        </div>
+        <div class="hud-box">
+          <h4>SINGLE URL SCAN (one specific parameterized URL)</h4>
+          <div class="row">
+            <input type="text" id="ascanUrl" placeholder="Target URL WITH query params, e.g. https://target.example.com/search?q=test">
+            <button id="btnAscanStart">SCAN THIS URL</button>
+          </div>
+          <label class="opt" style="margin-top:10px;"><input type="checkbox" id="ascanConfirm"> I confirm I am authorized to actively test this target</label>
+          <div class="barwrap"><div class="bar" id="ascanBar" style="width:0%"></div><div class="barlabel" id="ascanBarLabel">idle</div></div>
+        </div>
+        <div class="hud-box">
+          <h4>RESULTS</h4>
+          <div id="ascanResults" class="empty-state">no scan run yet</div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-alerts">
+        <div class="hud-box">
+          <h4>FILTER</h4>
+          <div class="row">
+            <label class="opt"><input type="checkbox" class="riskf" value="High" checked> High</label>
+            <label class="opt"><input type="checkbox" class="riskf" value="Medium" checked> Medium</label>
+            <label class="opt"><input type="checkbox" class="riskf" value="Low" checked> Low</label>
+            <button id="btnRefreshAlerts">REFRESH</button>
+          </div>
+        </div>
+        <div class="hud-box" style="padding:0;">
+          <table>
+            <thead><tr><th style="width:90px;">Risk</th><th>Finding</th><th style="width:160px;">Host</th><th style="width:70px;">Count</th></tr></thead>
+            <tbody id="alertsBody"><tr><td colspan="4" class="empty-state">no findings loaded</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-history">
+        <div class="hud-box">
+          <h4>REQUEST HISTORY <button id="btnRefreshHistory" style="float:right;">REFRESH</button></h4>
+          <table>
+            <thead><tr><th style="width:50px;">#</th><th style="width:90px;">Method</th><th style="width:70px;">Code</th><th>URL</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="4" class="empty-state">no history loaded</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-repeater">
+        <div class="hud-box">
+          <h4>REQUEST <span class="muted">— craft, edit, or send here from a History entry</span></h4>
+          <div class="row">
+            <select id="rptMethod" style="flex:0 0 100px;">
+              <option>GET</option><option>POST</option><option>PUT</option>
+              <option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+            </select>
+            <input type="text" id="rptUrl" placeholder="https://target.example.com/path?param=value">
+            <button class="primary" id="btnRptSend">SEND</button>
+            <button id="btnRptToFuzzer">SEND TO FUZZER</button>
+          </div>
+          <div class="field-label">HEADERS (one per line, "Key: value")</div>
+          <textarea id="rptHeaders" rows="5" placeholder="User-Agent: glacier-repeater
+Cookie: session=abc123"></textarea>
+          <div class="field-label">BODY</div>
+          <textarea id="rptBody" rows="6" placeholder="(optional - request body, e.g. form data or JSON)"></textarea>
+        </div>
+        <div class="twocol">
+          <div class="col hud-box">
+            <h4>RESPONSE</h4>
+            <div id="rptResponse" class="empty-state">no request sent yet</div>
+          </div>
+          <div class="col hud-box">
+            <h4>HISTORY <button id="btnRptRefreshHistory" style="float:right;">REFRESH</button></h4>
+            <table>
+              <thead><tr><th style="width:50px;">#</th><th style="width:90px;">Method</th><th style="width:70px;">Code</th><th>URL</th></tr></thead>
+              <tbody id="rptHistoryBody"><tr><td colspan="4" class="empty-state">no requests sent yet</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-fuzzer">
+        <div class="hud-box">
+          <h4>REQUEST TEMPLATE <span class="muted">— mark the injection point with the literal text FUZZ (in the URL, a header, or the body)</span></h4>
+          <div class="row">
+            <select id="fuzMethod" style="flex:0 0 100px;">
+              <option>GET</option><option>POST</option><option>PUT</option>
+              <option>PATCH</option><option>DELETE</option>
+            </select>
+            <input type="text" id="fuzUrl" placeholder="https://target.example.com/path?id=FUZZ">
+          </div>
+          <div class="field-label">HEADERS (one per line, "Key: value")</div>
+          <textarea id="fuzHeaders" rows="4" placeholder="Cookie: session=FUZZ"></textarea>
+          <div class="field-label">BODY</div>
+          <textarea id="fuzBody" rows="4" placeholder="(optional - e.g. username=FUZZ&password=test)"></textarea>
+        </div>
+        <div class="hud-box">
+          <h4>PAYLOADS</h4>
+          <div class="row">
+            <select id="fuzWordlist" style="flex:0 0 220px;"><option value="">(none - use custom list below only)</option></select>
+            <input type="number" id="fuzDelay" value="0" step="0.1" min="0" title="delay between requests, seconds" style="flex:0 0 90px;">
+            <label class="opt">sec delay</label>
+          </div>
+          <div class="field-label">CUSTOM PAYLOADS (one per line - combined with the wordlist above, if selected)</div>
+          <textarea id="fuzPayloads" rows="5" placeholder="admin
+test
+' OR '1'='1"></textarea>
+          <label class="opt" style="margin-top:10px;"><input type="checkbox" id="fuzConfirm"> I confirm I am authorized to actively test this target</label>
+          <div class="warn-box">This sends one request per payload to the target above - potentially hundreds. Only run against systems you own or are authorized to test.</div>
+          <div class="row" style="margin-top:10px;">
+            <button class="primary" id="btnFuzStart">START FUZZING</button>
+            <button id="btnFuzStop" disabled>STOP</button>
+          </div>
+          <div class="barwrap"><div class="bar" id="fuzBar" style="width:0%"></div><div class="barlabel" id="fuzBarLabel">idle</div></div>
+        </div>
+        <div class="hud-box" style="padding:0;">
+          <h4 style="padding:16px 16px 0;">RESULTS <span class="muted">— click a column to sort, click a row for the full response</span></h4>
+          <table>
+            <thead><tr>
+              <th data-sort="seq" style="width:50px;">#</th>
+              <th data-sort="payload">Payload</th>
+              <th data-sort="status_code" style="width:80px;">Status</th>
+              <th data-sort="length" style="width:90px;">Length</th>
+              <th data-sort="elapsed_ms" style="width:100px;">Time (ms)</th>
+            </tr></thead>
+            <tbody id="fuzResultsBody"><tr><td colspan="5" class="empty-state">no fuzz run yet</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="detail">
+  <button id="detailclose">CLOSE</button>
+  <div id="detailbody"></div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+(function(){
+  let BASE = '';
+  let connected = false;
+  let scopeHost = null;
+  let liveSocket = null;
+  let riskChart = null;
+  const $ = (id) => document.getElementById(id);
+
+  // ---- Toasts ----
+  function toast(msg, type) {
+    type = type || 'info';
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    $('toasts').appendChild(el);
+    setTimeout(() => {
+      el.classList.add('fadeout');
+      setTimeout(() => el.remove(), 300);
+    }, 3800);
+  }
+
+  function api(path, opts) {
+    opts = opts || {};
+    return window.glacierBridge.request(BASE, path, opts).then(result => {
+      if (!result.ok) throw new Error(result.error || 'request failed');
+      return result.data;
+    });
+  }
+
+  function setConnStatus(ok, msg) {
+    connected = ok;
+    $('livedot').className = 'dot ' + (ok ? 'live' : 'bad');
+    $('connstatus').textContent = msg;
+  }
+
+  $('btnConnect').addEventListener('click', () => {
+    BASE = $('apiUrl').value.trim();
+    if (!BASE) { toast('Enter an API URL', 'warn'); return; }
+    setConnStatus(false, 'connecting...');
+    api('/api/sites').then(sites => {
+      setConnStatus(true, 'connected');
+      toast('Connected to glacier API', 'success');
+      renderSites(sites);
+      loadOverview();
+      loadAlerts();
+      startLiveFeed();
+      startAutoRefresh();
+    }).catch(err => {
+      setConnStatus(false, 'failed');
+      toast('Connection failed: ' + err.message, 'error');
+    });
+  });
+
+  // ---- Live feed (WebSocket) ----
+  function startLiveFeed() {
+    if (liveSocket) { try { liveSocket.close(); } catch(e){} }
+    const wsUrl = BASE.replace(/^http/, 'ws') + '/api/ws/live';
+    try {
+      liveSocket = new WebSocket(wsUrl);
+      liveSocket.onopen = () => { $('ov-live').textContent = 'on'; };
+      liveSocket.onclose = () => { $('ov-live').textContent = 'off'; };
+      liveSocket.onerror = () => { $('ov-live').textContent = 'error'; };
+      liveSocket.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (document.getElementById('pane-history').classList.contains('active')) {
+          prependHistoryRow(msg);
+        }
+      };
+    } catch (e) { /* live feed is a nice-to-have, not critical */ }
+  }
+
+  let autoRefreshTimer = null;
+  function startAutoRefresh() {
+    if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+    autoRefreshTimer = setInterval(() => {
+      if (!connected) return;
+      loadOverview();
+      if (document.getElementById('pane-alerts').classList.contains('active')) loadAlerts();
+    }, 4000);
+  }
+
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      $('pane-'+t.dataset.tab).classList.add('active');
+      if (t.dataset.tab === 'alerts') loadAlerts();
+      if (t.dataset.tab === 'history') loadHistory();
+      if (t.dataset.tab === 'overview') loadOverview();
+      if (t.dataset.tab === 'repeater') loadRepeaterHistory();
+      if (t.dataset.tab === 'fuzzer') loadFuzzWordlists();
+    });
+  });
+
+  // ---- Scope (site filtering) ----
+  function setScope(host) {
+    scopeHost = host;
+    if (host) {
+      $('scopebar').classList.add('active');
+      $('scopePill').innerHTML = escapeHtml(host) + ' <span class="x" id="scopeClear">\u2715</span>';
+      $('scopeClear').addEventListener('click', () => setScope(null));
+    } else {
+      $('scopebar').classList.remove('active');
+    }
+    document.querySelectorAll('#sitetree li').forEach(li => {
+      li.classList.toggle('active', li.dataset.host === host);
+    });
+    loadAlerts();
+    loadHistory();
+  }
+
+  function renderSites(sites) {
+    const ul = $('sitetree');
+    ul.innerHTML = '';
+    if (!sites || sites.length === 0) { ul.innerHTML = '<li class="empty">no sites yet</li>'; return; }
+    sites.forEach(s => {
+      const li = document.createElement('li');
+      li.textContent = s.host;
+      li.title = 'Click to scope to this site';
+      li.dataset.host = s.host;
+      if (s.host === scopeHost) li.classList.add('active');
+      li.addEventListener('click', () => {
+        $('spiderUrl').value = 'https://' + s.host;
+        setScope(scopeHost === s.host ? null : s.host);
+      });
+      ul.appendChild(li);
+    });
+    $('ov-sites').textContent = sites.length;
+  }
+
+  function loadOverview() {
+    api('/api/findings/summary').then(s => {
+      const high = s.High || 0, medium = s.Medium || 0, low = s.Low || 0;
+      $('ov-high').textContent = high;
+      $('ov-medium').textContent = medium;
+      $('ov-low').textContent = low;
+      $('alertBadge').textContent = high + medium + low;
+      updateChart(high, medium, low);
+    }).catch(()=>{});
+    api('/api/sites').then(renderSites).catch(()=>{});
+  }
+
+  function updateChart(high, medium, low) {
+    const ctx = $('riskChart').getContext('2d');
+    const data = { labels: ['High','Medium','Low'], datasets: [{ data: [high, medium, low], backgroundColor: ['#ff4d6d','#e6b45c','#7fd88f'], borderColor: '#0e131c', borderWidth: 2 }] };
+    if (riskChart) {
+      riskChart.data = data;
+      riskChart.update();
+    } else if (window.Chart) {
+      riskChart = new Chart(ctx, {
+        type: 'doughnut',
+        data,
+        options: {
+          plugins: { legend: { labels: { color: '#c9d4e3', font: { family: 'monospace', size: 10 } } } },
+          cutout: '65%',
+        }
+      });
+    }
+  }
+
+  // ---- Session / Export ----
+  $('btnNewSession').addEventListener('click', () => {
+    if (!confirm('This permanently clears all captured traffic, findings, and spider jobs. Continue?')) return;
+    api('/api/session/new', { method: 'POST' }).then(() => {
+      toast('Session cleared', 'success');
+      setScope(null);
+      loadOverview();
+      loadAlerts();
+      loadHistory();
+    }).catch(err => toast('Failed: ' + err.message, 'error'));
+  });
+
+  $('btnExport').addEventListener('click', () => {
+    if (!connected) { toast('Connect first', 'warn'); return; }
+    Promise.all([
+      api('/api/findings/grouped' + (scopeHost ? '?host='+encodeURIComponent(scopeHost) : '')),
+      api('/api/findings/summary'),
+      api('/api/sites'),
+    ]).then(([groups, summary, sites]) => {
+      const html = buildReportHtml(groups, summary, sites, scopeHost);
+      const defaultName = 'glacier-report-' + new Date().toISOString().slice(0,10) + '.html';
+      return window.glacierBridge.saveReport(defaultName, html);
+    }).then(result => {
+      if (result.canceled) return;
+      if (result.ok) toast('Report saved: ' + result.path, 'success');
+      else toast('Save failed: ' + result.error, 'error');
+    }).catch(err => toast('Export failed: ' + err.message, 'error'));
+  });
+
+  function buildReportHtml(groups, summary, sites, scope) {
+    const rows = groups.map(g => `
+      <tr>
+        <td><span style="padding:2px 8px;border-radius:2px;font-size:11px;background:${riskColor(g.risk)}22;color:${riskColor(g.risk)};border:1px solid ${riskColor(g.risk)}66;">${g.risk}</span></td>
+        <td>${escapeHtml(g.name)}</td>
+        <td>${escapeHtml(g.host)}</td>
+        <td>${g.count}</td>
+        <td style="font-size:11px;color:#7b8699;">${escapeHtml(g.description||'')}</td>
+      </tr>`).join('');
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>glacier report</title>
+      <style>
+        body{font-family:ui-monospace,Consolas,monospace;background:#080a10;color:#c9d4e3;padding:40px;}
+        h1{color:#5fd7e0;} table{width:100%;border-collapse:collapse;margin-top:20px;}
+        th,td{padding:8px 10px;border-bottom:1px solid #1e2836;text-align:left;font-size:13px;}
+        th{color:#7b8699;font-size:11px;letter-spacing:1px;}
+        .stats{display:flex;gap:16px;margin-top:16px;}
+        .stat{border:1px solid #1e2836;border-radius:4px;padding:14px 20px;text-align:center;}
+        .stat .n{font-size:28px;font-weight:bold;}
+      </style></head><body>
+      <h1>glacier report</h1>
+      <p style="color:#7b8699;">Generated ${new Date().toLocaleString()} ${scope ? '\u2014 scoped to ' + escapeHtml(scope) : '\u2014 all sites'}</p>
+      <p style="color:#7b8699;">Sites captured: ${sites.length}</p>
+      <div class="stats">
+        <div class="stat"><div class="n" style="color:#ff4d6d;">${summary.High||0}</div>HIGH</div>
+        <div class="stat"><div class="n" style="color:#e6b45c;">${summary.Medium||0}</div>MEDIUM</div>
+        <div class="stat"><div class="n" style="color:#7fd88f;">${summary.Low||0}</div>LOW</div>
+      </div>
+      <table><thead><tr><th>Risk</th><th>Finding</th><th>Host</th><th>Count</th><th>Description</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5">No open findings.</td></tr>'}</tbody></table>
+      </body></html>`;
+  }
+  function riskColor(r) { return r === 'High' ? '#ff4d6d' : r === 'Medium' ? '#e6b45c' : '#7fd88f'; }
+
+  // ---- Auth config ----
+  $('authMode').addEventListener('change', () => {
+    const isForm = $('authMode').value === 'form';
+    $('authFormFields').style.display = isForm ? 'flex' : 'none';
+    $('authFormFields2').style.display = isForm ? 'flex' : 'none';
+    $('authCookieFields').style.display = isForm ? 'none' : 'flex';
+  });
+  function getAuthConfig() {
+    if (!$('authEnable').checked) return null;
+    const mode = $('authMode').value;
+    if (mode === 'cookie') {
+      return { mode: 'cookie', cookie_header: $('authCookieHeader').value.trim() };
+    }
+    return {
+      mode: 'form',
+      login_url: $('authLoginUrl').value.trim(),
+      username: $('authUsername').value,
+      password: $('authPassword').value,
+      success_indicator: $('authSuccessIndicator').value.trim() || null,
+      logout_indicator: $('authLogoutIndicator').value.trim() || null,
+    };
+  }
+
+  // ---- Spider ----
+  $('btnSpiderStart').addEventListener('click', () => {
+    const url = $('spiderUrl').value.trim();
+    if (!url) { toast('Enter a target URL', 'warn'); return; }
+    $('btnSpiderStart').disabled = true;
+    $('spiderBarLabel').textContent = 'starting...';
+    api('/api/spider/start', {
+      method: 'POST',
+      body: { url, max_depth: Number($('spiderDepth').value), max_pages: Number($('spiderPages').value) }
+    }).then(d => pollSpider(d.job_id)).catch(err => {
+      toast('Failed: ' + err.message, 'error');
+      $('btnSpiderStart').disabled = false;
+    });
+  });
+  function pollSpider(jobId) {
+    api('/api/spider/status/' + jobId).then(s => {
+      const pct = s.total > 0 ? Math.round((s.visited / s.total) * 100) : 0;
+      $('spiderBar').style.width = pct + '%';
+      $('spiderBarLabel').textContent = s.status + ' — ' + s.visited + '/' + s.total;
+      if (s.status === 'running') {
+        setTimeout(() => pollSpider(jobId), 1000);
+      } else {
+        $('btnSpiderStart').disabled = false;
+        toast('Spider finished: ' + s.visited + ' pages visited', 'success');
+        api('/api/spider/results/' + jobId).then(r => {
+          const results = r.results || [];
+          $('spiderCount').textContent = '(' + results.length + ')';
+          $('spiderResults').innerHTML = results.length
+            ? '<table><tbody>' + results.map(u => '<tr><td style="word-break:break-all;">'+escapeHtml(u)+'</td></tr>').join('') + '</tbody></table>'
+            : '<div class="empty-state">no results</div>';
+        });
+        loadOverview();
+      }
+    });
+  }
+
+  // ---- Full-site Pipeline Scan ----
+  $('btnPipelineStart').addEventListener('click', () => {
+    const url = $('pipelineUrl').value.trim();
+    const confirmed = $('pipelineConfirm').checked;
+    if (!url) { toast('Enter a starting URL', 'warn'); return; }
+    if (!confirmed) { toast('Check the authorization confirmation box first', 'warn'); return; }
+    $('btnPipelineStart').disabled = true;
+    $('pipelineBarLabel').textContent = 'starting...';
+    api('/api/pipeline/scan', {
+      method: 'POST',
+      body: { url, confirm: true, max_depth: Number($('pipelineDepth').value), max_pages: Number($('pipelinePages').value), auth: getAuthConfig() }
+    }).then(d => pollPipeline(d.job_id)).catch(err => {
+      toast('Failed: ' + err.message, 'error');
+      $('btnPipelineStart').disabled = false;
+    });
+  });
+  function pollPipeline(jobId) {
+    api('/api/pipeline/status/' + jobId).then(s => {
+      if (s.status === 'running') {
+        let pct = 0, label = '';
+        if (s.phase === 'spidering') {
+          pct = s.spider_total > 0 ? Math.round((s.spider_visited / s.spider_total) * 40) : 0;
+          label = 'crawling: ' + s.spider_visited + '/' + s.spider_total;
+        } else {
+          pct = 40 + (s.scan_total > 0 ? Math.round((s.scan_done / s.scan_total) * 60) : 0);
+          label = 'scanning: ' + s.scan_done + '/' + s.scan_total;
+        }
+        $('pipelineBar').style.width = pct + '%';
+        $('pipelineBarLabel').textContent = label;
+        setTimeout(() => pollPipeline(jobId), 1000);
+      } else {
+        $('btnPipelineStart').disabled = false;
+        $('pipelineBar').style.width = '100%';
+        const n = (s.findings || []).length;
+        $('pipelineBarLabel').textContent = s.status + ' — ' + n + ' finding(s)';
+        toast('Scan complete: ' + n + ' finding(s)', n > 0 ? 'warn' : 'success');
+        renderAscanResults(s.findings || []);
+        loadOverview();
+      }
+    });
+  }
+  function renderAscanResults(findings) {
+    $('ascanResults').innerHTML = findings.length
+      ? findings.map(f => (
+          '<div class="hud-box" style="margin-bottom:8px;">'+
+          '<span class="risk '+f.risk+'">'+f.risk+'</span> <b>'+escapeHtml(f.name)+'</b>'+
+          '<p class="muted" style="margin-top:6px; word-break:break-all;">'+escapeHtml(f.url)+'</p>'+
+          '<p class="muted" style="margin-top:4px;">'+escapeHtml(f.description)+'</p>'+
+          '</div>'
+        )).join('')
+      : '<div class="empty-state">no vulnerabilities detected</div>';
+  }
+
+  // ---- Active Scan (single URL) ----
+  $('btnAscanStart').addEventListener('click', () => {
+    const url = $('ascanUrl').value.trim();
+    const confirmed = $('ascanConfirm').checked;
+    if (!url) { toast('Enter a target URL', 'warn'); return; }
+    if (!confirmed) { toast('Check the authorization confirmation box first', 'warn'); return; }
+    $('btnAscanStart').disabled = true;
+    $('ascanBarLabel').textContent = 'scanning...';
+    $('ascanBar').style.width = '40%';
+    api('/api/active/scan', { method: 'POST', body: { url, confirm: true, auth: getAuthConfig() } }).then(d => pollAscan(d.job_id)).catch(err => {
+      toast('Failed: ' + err.message, 'error');
+      $('btnAscanStart').disabled = false;
+    });
+  });
+  function pollAscan(jobId) {
+    api('/api/active/status/' + jobId).then(s => {
+      if (s.status === 'running') {
+        $('ascanBarLabel').textContent = s.current || 'scanning...';
+        setTimeout(() => pollAscan(jobId), 800);
+      } else {
+        $('btnAscanStart').disabled = false;
+        $('ascanBar').style.width = '100%';
+        $('ascanBarLabel').textContent = s.status;
+        const n = (s.findings || []).length;
+        toast('Scan complete: ' + n + ' finding(s)', n > 0 ? 'warn' : 'success');
+        renderAscanResults(s.findings || []);
+        loadOverview();
+      }
+    });
+  }
+
+  // ---- Alerts (grouped findings) ----
+  let allGroups = [];
+  function activeRiskFilters() {
+    return Array.from(document.querySelectorAll('.riskf:checked')).map(c => c.value);
+  }
+  document.querySelectorAll('.riskf').forEach(c => c.addEventListener('change', renderAlerts));
+  $('btnRefreshAlerts').addEventListener('click', () => { loadAlerts(); toast('Alerts refreshed', 'success'); });
+  function loadAlerts() {
+    const q = scopeHost ? '?host=' + encodeURIComponent(scopeHost) : '';
+    api('/api/findings/grouped' + q).then(groups => {
+      allGroups = groups;
+      renderAlerts();
+    }).catch(()=>{});
+  }
+  function renderAlerts() {
+    const filters = activeRiskFilters();
+    const filtered = allGroups.filter(g => filters.includes(g.risk));
+    const body = $('alertsBody');
+    if (filtered.length === 0) {
+      body.innerHTML = '<tr><td colspan="4" class="empty-state">no open findings match filter</td></tr>';
+      return;
+    }
+    body.innerHTML = filtered.map((g,i) => (
+      '<tr class="rowhover" data-idx="'+i+'">'+
+      '<td><span class="risk '+g.risk+'">'+g.risk+'</span></td>'+
+      '<td>'+escapeHtml(g.name)+'</td>'+
+      '<td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+escapeHtml(g.host)+'</td>'+
+      '<td>'+g.count+'</td>'+
+      '</tr>'
+    )).join('');
+    Array.from(body.querySelectorAll('tr')).forEach(tr => {
+      tr.addEventListener('click', () => showFindingDetail(filtered[Number(tr.dataset.idx)]));
+    });
+  }
+  function showFindingDetail(g) {
+    $('detailbody').innerHTML =
+      '<h3>'+escapeHtml(g.name)+'</h3>'+
+      field('RISK', '<span class="risk '+g.risk+'">'+g.risk+'</span>') +
+      field('HOST', escapeHtml(g.host)) +
+      field('AFFECTED URLS ('+g.count+')', '<div class="urllist">'+g.urls.map(u=>'<div>'+escapeHtml(u)+'</div>').join('')+'</div>') +
+      field('DESCRIPTION', escapeHtml(g.description||'')) +
+      field('SAMPLE EVIDENCE', '<pre>'+escapeHtml(g.sample_evidence||'')+'</pre>') +
+      '<div class="row" style="margin-top:16px;">'+
+        '<button class="primary" id="btnMarkFixed">MARK FIXED</button>'+
+        '<button id="btnMarkFP">MARK FALSE POSITIVE</button>'+
+      '</div>';
+    $('detail').classList.add('open');
+    $('btnMarkFixed').addEventListener('click', () => updateGroupStatus(g, 'fixed'));
+    $('btnMarkFP').addEventListener('click', () => updateGroupStatus(g, 'false_positive'));
+  }
+  function updateGroupStatus(g, status) {
+    api('/api/findings/bulk-status', { method: 'PATCH', body: { host: g.host, name: g.name, risk: g.risk, status } })
+      .then(() => {
+        $('detail').classList.remove('open');
+        toast('Marked as ' + status.replace('_',' '), 'success');
+        loadAlerts();
+        loadOverview();
+      }).catch(err => toast('Failed: ' + err.message, 'error'));
+  }
+  function field(k, v) {
+    return '<div class="field"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
+  }
+  $('detailclose').addEventListener('click', () => $('detail').classList.remove('open'));
+
+  // ---- History ----
+  $('btnRefreshHistory').addEventListener('click', () => { loadHistory(); toast('History refreshed', 'success'); });
+  function loadHistory() {
+    const params = { limit: 200 };
+    if (scopeHost) params.host = scopeHost;
+    api('/api/traffic', { params }).then(msgs => {
+      const body = $('historyBody');
+      if (!msgs || msgs.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="empty-state">no history yet</td></tr>';
+        return;
+      }
+      body.innerHTML = msgs.map(rowHtml).join('');
+      Array.from(body.querySelectorAll('tr')).forEach(tr => {
+        tr.addEventListener('click', () => showMessageDetail(tr.dataset.id));
+      });
+    }).catch(()=>{});
+  }
+  function rowHtml(m) {
+    return '<tr class="rowhover" data-id="'+m.id+'">'+
+      '<td>'+m.id+'</td>'+
+      '<td><span class="method">'+escapeHtml(m.method||'')+'</span></td>'+
+      '<td>'+(m.status_code||'—')+'</td>'+
+      '<td style="max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+escapeHtml(m.url||'')+'</td>'+
+      '</tr>';
+  }
+  function prependHistoryRow(m) {
+    if (scopeHost && m.host !== scopeHost) return;
+    const body = $('historyBody');
+    if (body.querySelector('.empty-state')) body.innerHTML = '';
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = rowHtml(m);
+    const tr = tmp.firstElementChild;
+    tr.classList.add('newrow');
+    tr.addEventListener('click', () => showMessageDetail(m.id));
+    body.insertBefore(tr, body.firstChild);
+    while (body.children.length > 200) body.removeChild(body.lastChild);
+  }
+  function showMessageDetail(id) {
+    api('/api/traffic/' + id).then(m => {
+      $('detailbody').innerHTML =
+        '<h3>Message #'+id+'</h3>'+
+        field('URL', escapeHtml(m.url||'')) +
+        field('REQUEST HEADERS', '<pre>'+escapeHtml(m.request_headers||'')+'</pre>') +
+        field('REQUEST BODY', '<pre>'+escapeHtml(m.request_body||'(empty)')+'</pre>') +
+        field('RESPONSE HEADERS', '<pre>'+escapeHtml(m.response_headers||'')+'</pre>') +
+        field('RESPONSE BODY', '<pre>'+escapeHtml((m.response_body||'').slice(0,4000))+'</pre>') +
+        '<div class="row" style="margin-top:16px;">'+
+          '<button class="primary" id="btnSendToRepeater">SEND TO REPEATER</button>'+
+          '<button id="btnSendToFuzzer">SEND TO FUZZER</button>'+
+        '</div>';
+      $('detail').classList.add('open');
+      $('btnSendToRepeater').addEventListener('click', () => {
+        loadIntoRepeater(m.method || 'GET', m.url || '', m.request_headers || '', m.request_body || '');
+        $('detail').classList.remove('open');
+        document.querySelector('.tab[data-tab="repeater"]').click();
+        toast('Loaded into Repeater', 'success');
+      });
+      $('btnSendToFuzzer').addEventListener('click', () => {
+        loadIntoFuzzer(m.method || 'GET', m.url || '', m.request_headers || '', m.request_body || '');
+        $('detail').classList.remove('open');
+        document.querySelector('.tab[data-tab="fuzzer"]').click();
+        loadFuzzWordlists();
+        toast('Loaded into Fuzzer - replace a value with FUZZ to mark the injection point', 'success');
+      });
+    }).catch(err => toast('Failed: ' + err.message, 'error'));
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---- Repeater ----
+  function loadIntoRepeater(method, url, headersText, body) {
+    $('rptMethod').value = (method || 'GET').toUpperCase();
+    $('rptUrl').value = url || '';
+    $('rptHeaders').value = headersText || '';
+    $('rptBody').value = body || '';
+  }
+
+  $('btnRptSend').addEventListener('click', () => {
+    const url = $('rptUrl').value.trim();
+    if (!url) { toast('Enter a URL', 'warn'); return; }
+    $('btnRptSend').disabled = true;
+    $('rptResponse').innerHTML = '<div class="empty-state">sending...</div>';
+    api('/api/repeater/send', {
+      method: 'POST',
+      body: {
+        method: $('rptMethod').value,
+        url,
+        headers_text: $('rptHeaders').value,
+        body: $('rptBody').value,
+      }
+    }).then(renderRepeaterResponse).then(() => {
+      loadRepeaterHistory();
+    }).catch(err => {
+      $('rptResponse').innerHTML = '<div class="empty-state">request failed: ' + escapeHtml(err.message) + '</div>';
+    }).finally(() => { $('btnRptSend').disabled = false; });
+  });
+
+  function renderRepeaterResponse(r) {
+    if (!r.ok) {
+      $('rptResponse').innerHTML = '<div class="empty-state">'+escapeHtml(r.error || 'request failed')+'</div>';
+      return;
+    }
+    const codeClass = r.status_code >= 500 ? 'code-5xx' : r.status_code >= 400 ? 'code-4xx' : r.status_code >= 300 ? 'code-3xx' : 'code-2xx';
+    $('rptResponse').innerHTML =
+      '<div class="respmeta"><span class="'+codeClass+'">'+r.status_code+' '+escapeHtml(r.reason||'')+'</span>'+
+      ' &nbsp;|&nbsp; ' + r.elapsed_ms + 'ms</div>' +
+      field('RESPONSE HEADERS', '<pre>'+escapeHtml(r.response_headers||'')+'</pre>') +
+      field('RESPONSE BODY', '<pre>'+escapeHtml((r.response_body||'').slice(0,4000))+'</pre>');
+  }
+
+  $('btnRptRefreshHistory').addEventListener('click', () => { loadRepeaterHistory(); toast('Repeater history refreshed', 'success'); });
+
+  $('btnRptToFuzzer').addEventListener('click', () => {
+    loadIntoFuzzer($('rptMethod').value, $('rptUrl').value, $('rptHeaders').value, $('rptBody').value);
+    document.querySelector('.tab[data-tab="fuzzer"]').click();
+    loadFuzzWordlists();
+    toast('Loaded into Fuzzer - replace a value with FUZZ to mark the injection point', 'success');
+  });
+
+  function loadRepeaterHistory() {
+    api('/api/repeater/history').then(entries => {
+      const body = $('rptHistoryBody');
+      if (!entries || entries.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="empty-state">no requests sent yet</td></tr>';
+        return;
+      }
+      body.innerHTML = entries.map(e => {
+        const code = e.error ? 'ERR' : (e.status_code || '—');
+        return '<tr class="rowhover" data-id="'+e.id+'">'+
+          '<td>'+e.id+'</td>'+
+          '<td><span class="method">'+escapeHtml(e.method||'')+'</span></td>'+
+          '<td>'+code+'</td>'+
+          '<td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+escapeHtml(e.url||'')+'</td>'+
+          '</tr>';
+      }).join('');
+      Array.from(body.querySelectorAll('tr')).forEach(tr => {
+        tr.addEventListener('click', () => loadRepeaterEntry(tr.dataset.id));
+      });
+    }).catch(()=>{});
+  }
+
+  function loadRepeaterEntry(id) {
+    api('/api/repeater/' + id).then(e => {
+      loadIntoRepeater(e.method, e.url, e.request_headers, e.request_body);
+      if (e.error) {
+        $('rptResponse').innerHTML = '<div class="empty-state">'+escapeHtml(e.error)+'</div>';
+      } else {
+        renderRepeaterResponse({
+          ok: true, status_code: e.status_code, reason: e.reason,
+          response_headers: e.response_headers, response_body: e.response_body,
+          elapsed_ms: e.elapsed_ms,
+        });
+      }
+    }).catch(err => toast('Failed: ' + err.message, 'error'));
+  }
+
+  // ---- Fuzzer ----
+  let fuzWordlistsLoaded = false;
+  let fuzCurrentJob = null;
+  let fuzPollTimer = null;
+  let fuzSortBy = 'seq';
+  let fuzSortOrder = 'asc';
+
+  function loadIntoFuzzer(method, url, headersText, body) {
+    $('fuzMethod').value = (method || 'GET').toUpperCase();
+    $('fuzUrl').value = url || '';
+    $('fuzHeaders').value = headersText || '';
+    $('fuzBody').value = body || '';
+  }
+
+  function loadFuzzWordlists() {
+    if (fuzWordlistsLoaded) return;
+    api('/api/fuzz/wordlists').then(lists => {
+      const sel = $('fuzWordlist');
+      Object.keys(lists).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name + ' (' + lists[name] + ')';
+        sel.appendChild(opt);
+      });
+      fuzWordlistsLoaded = true;
+    }).catch(()=>{});
+  }
+
+  $('btnFuzStart').addEventListener('click', () => {
+    const url = $('fuzUrl').value.trim();
+    if (!url) { toast('Enter a URL', 'warn'); return; }
+    if (!$('fuzConfirm').checked) { toast('Check the authorization confirmation first', 'warn'); return; }
+    const headersText = $('fuzHeaders').value;
+    const body = $('fuzBody').value;
+    if (url.indexOf('FUZZ') === -1 && headersText.indexOf('FUZZ') === -1 && body.indexOf('FUZZ') === -1) {
+      toast('Mark the injection point with FUZZ somewhere in the URL, headers, or body', 'warn');
+      return;
+    }
+    const customPayloads = $('fuzPayloads').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const wordlist = $('fuzWordlist').value || null;
+    if (!wordlist && customPayloads.length === 0) {
+      toast('Pick a wordlist and/or enter custom payloads', 'warn');
+      return;
+    }
+
+    api('/api/fuzz/start', {
+      method: 'POST',
+      body: {
+        method: $('fuzMethod').value,
+        url, headers_text: headersText, body,
+        payloads: customPayloads,
+        wordlist,
+        delay: parseFloat($('fuzDelay').value) || 0,
+        confirm: true,
+      }
+    }).then(res => {
+      if (res.error) { toast(res.error, 'error'); return; }
+      fuzCurrentJob = res.job_id;
+      $('fuzResultsBody').innerHTML = '<tr><td colspan="5" class="empty-state">running...</td></tr>';
+      $('btnFuzStart').disabled = true;
+      $('btnFuzStop').disabled = false;
+      $('fuzBar').style.width = '0%';
+      $('fuzBarLabel').textContent = '0 / ' + res.total;
+      if (fuzPollTimer) clearInterval(fuzPollTimer);
+      fuzPollTimer = setInterval(pollFuzzJob, 800);
+    }).catch(err => toast('Failed: ' + err.message, 'error'));
+  });
+
+  $('btnFuzStop').addEventListener('click', () => {
+    if (!fuzCurrentJob) return;
+    api('/api/fuzz/stop/' + fuzCurrentJob, { method: 'POST', body: {} }).then(() => {
+      toast('Stopping...', 'success');
+    }).catch(()=>{});
+  });
+
+  function pollFuzzJob() {
+    if (!fuzCurrentJob) return;
+    api('/api/fuzz/status/' + fuzCurrentJob).then(s => {
+      if (s.error) { clearInterval(fuzPollTimer); return; }
+      const pct = s.total ? Math.round((s.completed / s.total) * 100) : 0;
+      $('fuzBar').style.width = pct + '%';
+      $('fuzBarLabel').textContent = s.completed + ' / ' + s.total + ' (' + s.status + ')';
+      loadFuzzResults();
+      if (s.status === 'done' || s.status === 'stopped' || s.status === 'error') {
+        clearInterval(fuzPollTimer);
+        $('btnFuzStart').disabled = false;
+        $('btnFuzStop').disabled = true;
+        toast('Fuzz run ' + s.status, s.status === 'error' ? 'error' : 'success');
+      }
+    }).catch(()=>{});
+  }
+
+  function loadFuzzResults() {
+    if (!fuzCurrentJob) return;
+    api('/api/fuzz/results/' + fuzCurrentJob, { params: { sort_by: fuzSortBy, order: fuzSortOrder, limit: 1000 } }).then(rows => {
+      const body = $('fuzResultsBody');
+      if (!rows || rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="empty-state">no results yet</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map(r => {
+        const code = r.error ? 'ERR' : (r.status_code || '—');
+        const codeClass = r.error ? 'code-5xx' : r.status_code >= 500 ? 'code-5xx' : r.status_code >= 400 ? 'code-4xx' : r.status_code >= 300 ? 'code-3xx' : 'code-2xx';
+        return '<tr class="rowhover" data-id="'+r.id+'">'+
+          '<td>'+r.seq+'</td>'+
+          '<td style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+escapeHtml(r.payload||'')+'</td>'+
+          '<td class="'+codeClass+'">'+code+'</td>'+
+          '<td>'+(r.length ?? '—')+'</td>'+
+          '<td>'+(r.elapsed_ms ?? '—')+'</td>'+
+          '</tr>';
+      }).join('');
+      Array.from(body.querySelectorAll('tr')).forEach(tr => {
+        tr.addEventListener('click', () => showFuzzResultDetail(tr.dataset.id));
+      });
+    }).catch(()=>{});
+  }
+
+  Array.from(document.querySelectorAll('#pane-fuzzer th[data-sort]')).forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (fuzSortBy === col) {
+        fuzSortOrder = fuzSortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        fuzSortBy = col;
+        fuzSortOrder = 'asc';
+      }
+      loadFuzzResults();
+    });
+  });
+
+  function showFuzzResultDetail(id) {
+    api('/api/fuzz/result/' + id).then(r => {
+      $('detailbody').innerHTML =
+        '<h3>Fuzz Result #'+r.seq+'</h3>'+
+        field('PAYLOAD', '<pre>'+escapeHtml(r.payload||'')+'</pre>') +
+        (r.error
+          ? field('ERROR', '<pre>'+escapeHtml(r.error)+'</pre>')
+          : field('STATUS', (r.status_code||'')+' '+escapeHtml(r.reason||'')+' &nbsp;|&nbsp; '+r.elapsed_ms+'ms &nbsp;|&nbsp; '+r.length+' bytes') +
+            field('RESPONSE HEADERS', '<pre>'+escapeHtml(r.response_headers||'')+'</pre>') +
+            field('RESPONSE BODY', '<pre>'+escapeHtml((r.response_body||'').slice(0,4000))+'</pre>')
+        );
+      $('detail').classList.add('open');
+    }).catch(err => toast('Failed: ' + err.message, 'error'));
+  }
+})();
+</script>
+</body>
+</html>

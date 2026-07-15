@@ -1,0 +1,22 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Databases (generated at runtime - never commit captured traffic/findings)
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Node / Electron
+hud/node_modules/
+hud/dist/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
