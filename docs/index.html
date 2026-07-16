@@ -1,585 +1,695 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glacier — Operate it like a professional</title>
-<meta name="description" content="A hands-on course for running the Glacier web application security scanner like a professional pentester.">
+
+#!/usr/bin/env python3
+"""
+generate.py
+Builds the static Glacier Academy course site into docs/ from the
+LESSONS content below. Re-run this after editing content - it
+regenerates every HTML file from scratch.
+"""
+
+import os
+
+OUT = os.path.join(os.path.dirname(__file__), "docs")
+LESSONS_DIR = os.path.join(OUT, "lessons")
+
+HEAD = """<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} &middot; Glacier Academy</title>
+<meta name="description" content="{desc}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg-void:#050709;
-    --bg-panel:#0a0e17;
-    --bg-panel-2:#0d1721;
-    --bg-card:#0c1620;
-    --border:#1e3646;
-    --border-soft:#152a38;
-    --ice-deep:#12384e;
-    --ice-mid:#1c6488;
-    --ice-bright:#3ea7d6;
-    --ice-glow:#7ee8ff;
-    --ice-glow-2:#9fe8ff;
-    --text-primary:#e4f1f7;
-    --text-body:#a9c7d8;
-    --text-muted:#5f8ba3;
-    --red:#ff5f57;
-    --amber:#febc2e;
-    --green:#28c840;
-    --mono:'JetBrains Mono', 'Courier New', monospace;
-    --sans:'IBM Plex Sans', -apple-system, sans-serif;
-  }
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
-    margin:0;
-    background:var(--bg-void);
-    color:var(--text-body);
-    font-family:var(--sans);
-    line-height:1.65;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{color:var(--ice-glow-2);}
-  ::selection{background:var(--ice-mid);color:#fff;}
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{root}assets/style.css">
+</head><body>
+"""
 
-  /* ---------- background grid ---------- */
-  .grid-bg{
-    position:fixed;inset:0;z-index:0;pointer-events:none;
-    background-image:
-      linear-gradient(var(--border-soft) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
-    background-size:40px 40px;
-    opacity:.35;
-    mask-image:linear-gradient(to bottom, black, transparent 85%);
-  }
+SITENAV = """
+<nav class="sitenav">
+  <a class="brand" href="{root}index.html">
+    <span class="mark">G</span>
+    <span class="name">Glacier Academy<span class="sub">by HackOps Academy</span></span>
+  </a>
+  <span class="spacer"></span>
+  <div class="navlinks">
+    <a href="{root}index.html">Course</a>
+    <a href="{root}lessons/01-welcome.html">Start learning</a>
+  </div>
+  <a class="ghbtn" href="https://github.com/hackops-academy/glacier" target="_blank" rel="noopener">&#9733; View on GitHub</a>
+</nav>
+"""
 
-  /* ---------- ethics strip ---------- */
-  .ethics{
-    position:relative;z-index:2;
-    background:#150c0c;
-    border-bottom:1px solid #3a1f1f;
-    color:#ffb3ae;
-    font-family:var(--mono);
-    font-size:13px;
-    padding:10px 24px;
-    text-align:center;
-  }
-  .ethics b{color:var(--red);}
-  .ethics span{color:#e4f1f7;}
+FOOT = """
+<footer class="sitefoot">
+  Glacier Academy &middot; unofficial companion course for Glacier, made by HackOps Academy &middot;
+  practice only against systems you own or are authorized to test
+</footer>
+<script src="{root}assets/course.js"></script>
+</body></html>
+"""
 
-  /* ---------- hero ---------- */
-  header.hero{
-    position:relative;z-index:1;
-    overflow:hidden;
-    padding:110px 24px 90px;
-    border-bottom:1px solid var(--border);
-  }
-  .hero-inner{max-width:900px;margin:0 auto;position:relative;z-index:3;}
-  .term-chrome{
-    display:inline-flex;align-items:center;gap:8px;
-    background:var(--bg-panel-2);border:1px solid var(--border);
-    border-radius:6px;padding:6px 14px 6px 10px;margin-bottom:36px;
-    font-family:var(--mono);font-size:12px;color:var(--text-muted);
-  }
-  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
-  .dot.r{background:var(--red);} .dot.y{background:var(--amber);} .dot.g{background:var(--green);}
-  h1.wordmark{
-    font-family:var(--mono);font-weight:800;
-    font-size:clamp(48px,9vw,104px);
-    letter-spacing:-2px;
-    margin:0 0 18px;
-    color:var(--ice-glow);
-    text-shadow:0 0 40px rgba(126,232,255,.35);
-  }
-  .hero p.lede{
-    font-size:clamp(17px,2.2vw,21px);
-    color:var(--text-primary);
-    max-width:620px;
-    margin:0 0 34px;
-  }
-  .hero p.lede em{color:var(--ice-bright);font-style:normal;}
-  .cmd-line{
-    font-family:var(--mono);font-size:15px;
-    background:var(--bg-panel-2);border:1px solid var(--border);
-    border-radius:8px;padding:16px 20px;max-width:560px;
-    color:var(--ice-glow-2);
-  }
-  .cmd-line .p{color:var(--ice-bright);}
-  .cmd-line .c{color:var(--text-muted);}
-  .cursor{display:inline-block;width:8px;height:16px;background:var(--ice-glow);vertical-align:middle;animation:blink 1.1s steps(1) infinite;margin-left:2px;}
-  @keyframes blink{50%{opacity:0;}}
+LESSONS = [
+    dict(
+        id="01-welcome", num="01", group="Foundations",
+        title="Welcome & Rules of Engagement",
+        dek="What Glacier is, how this course works, and the one rule that matters more than any feature.",
+        read="6 min",
+        body="""
+<p><strong>Glacier</strong> is a self-hosted web application security scanner: an intercepting proxy, a passive scanner, a spider, a manual request editor (Repeater), an Intruder-style fuzzer, and an active vulnerability scanner, all wired together behind one desktop HUD. This course teaches you to run it like someone who does this professionally &mdash; not just which buttons to click, but why each tool exists and when to reach for it.</p>
 
-  .hero-badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px;}
-  .badge{
-    font-family:var(--mono);font-size:12.5px;color:var(--ice-bright);
-    border:1px solid var(--border);background:var(--bg-panel-2);
-    padding:7px 12px;border-radius:20px;
-  }
-
-  /* glacier silhouette behind hero */
-  .peaks{position:absolute;left:0;right:0;bottom:-2px;height:260px;z-index:1;opacity:.9;}
-
-  /* ---------- layout ---------- */
-  .layout{
-    position:relative;z-index:1;
-    display:grid;
-    grid-template-columns:280px minmax(0,1fr);
-    max-width:1280px;margin:0 auto;
-    gap:0;
-  }
-  nav.toc{
-    position:sticky;top:0;align-self:start;
-    height:100vh;overflow-y:auto;
-    padding:48px 20px 48px 24px;
-    border-right:1px solid var(--border);
-  }
-  nav.toc::-webkit-scrollbar{width:6px;}
-  nav.toc::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-  .toc-track{
-    position:relative;padding-left:18px;
-  }
-  .toc-crack{
-    position:absolute;left:0;top:4px;bottom:4px;width:2px;
-    background:var(--border-soft);
-  }
-  .toc-crack::after{
-    content:"";position:absolute;left:0;top:0;width:100%;
-    height:var(--progress,0%);
-    background:linear-gradient(var(--ice-glow), var(--ice-bright));
-    box-shadow:0 0 8px var(--ice-glow);
-    transition:height .15s linear;
-  }
-  .toc-item{
-    display:block;position:relative;
-    font-family:var(--mono);font-size:13px;
-    color:var(--text-muted);text-decoration:none;
-    padding:9px 0 9px 16px;
-    border-left:1px solid transparent;
-    transition:color .15s;
-  }
-  .toc-item .n{color:var(--text-muted);margin-right:8px;}
-  .toc-item:hover{color:var(--ice-glow-2);}
-  .toc-item.active{color:var(--ice-glow);}
-  .toc-item.active .n{color:var(--ice-glow);}
-  .toc-item::before{
-    content:"";position:absolute;left:-19px;top:15px;width:6px;height:6px;
-    border-radius:50%;background:var(--border);
-  }
-  .toc-item.active::before{background:var(--ice-glow);box-shadow:0 0 8px var(--ice-glow);}
-
-  main{padding:0 0 100px;min-width:0;}
-  .module{
-    padding:64px clamp(24px,4vw,64px) 24px;
-    border-bottom:1px solid var(--border-soft);
-    scroll-margin-top:20px;
-  }
-  .module.m0{padding-top:56px;}
-  .module-eyebrow{
-    font-family:var(--mono);font-size:13px;color:var(--ice-bright);
-    display:flex;align-items:center;gap:10px;margin-bottom:14px;
-  }
-  .module-eyebrow .num{
-    display:inline-flex;align-items:center;justify-content:center;
-    width:30px;height:30px;border:1px solid var(--ice-mid);border-radius:6px;
-    color:var(--ice-glow);font-weight:700;
-  }
-  .module h2{
-    font-family:var(--mono);font-size:clamp(24px,3vw,34px);
-    color:var(--text-primary);margin:0 0 6px;letter-spacing:-.5px;
-  }
-  .module .goal{color:var(--text-muted);font-size:15px;margin-bottom:28px;max-width:680px;}
-  .module p{max-width:720px;font-size:15.5px;}
-  .module ul, .module ol{max-width:720px;padding-left:20px;font-size:15.5px;}
-  .module li{margin-bottom:6px;}
-  .module h3{
-    font-family:var(--mono);font-size:16px;color:var(--ice-glow-2);
-    margin-top:34px;margin-bottom:12px;
-  }
-
-  pre{
-    background:var(--bg-card);border:1px solid var(--border);
-    border-radius:8px;padding:16px 18px;overflow-x:auto;
-    font-family:var(--mono);font-size:13.5px;line-height:1.6;
-    color:var(--ice-glow-2);max-width:820px;position:relative;
-  }
-  pre .cm{color:var(--text-muted);}
-  pre .kw{color:var(--ice-bright);}
-  pre .str{color:#a3d977;}
-  code.inline{
-    font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border);
-    padding:2px 6px;border-radius:4px;font-size:13.5px;color:var(--ice-glow-2);
-  }
-
-  .tip{
-    max-width:720px;margin:20px 0;padding:14px 18px;
-    border-left:3px solid var(--ice-bright);
-    background:var(--bg-panel-2);border-radius:0 8px 8px 0;
-    font-size:14.5px;
-  }
-  .tip b{color:var(--ice-glow);font-family:var(--mono);font-size:12.5px;letter-spacing:.5px;display:block;margin-bottom:4px;}
-
-  .warn{
-    max-width:720px;margin:20px 0;padding:14px 18px;
-    border-left:3px solid var(--red);
-    background:#160d0d;border-radius:0 8px 8px 0;font-size:14.5px;
-  }
-  .warn b{color:var(--red);font-family:var(--mono);font-size:12.5px;letter-spacing:.5px;display:block;margin-bottom:4px;}
-
-  table{border-collapse:collapse;max-width:820px;width:100%;font-size:13.5px;margin:16px 0;}
-  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;}
-  th{background:var(--bg-panel-2);color:var(--ice-glow-2);font-family:var(--mono);font-weight:600;font-size:12.5px;}
-  td{color:var(--text-body);}
-  td code.inline, th code.inline{font-size:12.5px;}
-
-  .sev{display:inline-block;padding:2px 9px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:600;}
-  .sev.crit{background:rgba(255,95,87,.15);color:var(--red);border:1px solid rgba(255,95,87,.4);}
-  .sev.high{background:rgba(254,188,46,.15);color:var(--amber);border:1px solid rgba(254,188,46,.4);}
-  .sev.med{background:rgba(62,167,214,.15);color:var(--ice-bright);border:1px solid rgba(62,167,214,.4);}
-  .sev.info{background:rgba(40,200,64,.15);color:var(--green);border:1px solid rgba(40,200,64,.4);}
-
-  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:820px;margin:20px 0 28px;font-family:var(--mono);font-size:12.5px;}
-  .flow .box{background:var(--bg-card);border:1px solid var(--ice-mid);color:var(--ice-glow-2);padding:8px 12px;border-radius:6px;}
-  .flow .arrow{color:var(--text-muted);}
-
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:820px;}
-  @media (max-width:640px){.grid-2{grid-template-columns:1fr;}}
-  .kv{background:var(--bg-panel-2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
-  .kv .k{font-family:var(--mono);font-size:11.5px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
-  .kv .v{color:var(--text-primary);font-size:14px;}
-
-  footer{
-    position:relative;z-index:1;
-    border-top:1px solid var(--border);
-    padding:40px 24px;text-align:center;
-    font-family:var(--mono);font-size:12.5px;color:var(--text-muted);
-  }
-  footer a{color:var(--ice-bright);}
-
-  /* mobile toc */
-  .mobile-toc-toggle{display:none;}
-  @media (max-width:900px){
-    .layout{grid-template-columns:1fr;}
-    nav.toc{
-      position:sticky;top:0;height:auto;max-height:60px;overflow:hidden;
-      display:flex;overflow-x:auto;padding:12px 16px;
-      border-right:none;border-bottom:1px solid var(--border);
-      background:var(--bg-void);z-index:20;
-      transition:max-height .2s ease;
-    }
-    nav.toc.open{max-height:70vh;overflow-y:auto;flex-direction:column;}
-    .toc-track{padding-left:0;display:flex;gap:4px;flex-wrap:nowrap;}
-    nav.toc.open .toc-track{flex-direction:column;}
-    .toc-crack{display:none;}
-    .toc-item{white-space:nowrap;border:1px solid var(--border);border-radius:16px;padding:6px 12px;}
-    .toc-item::before{display:none;}
-    nav.toc.open .toc-item{white-space:normal;border-radius:6px;}
-  }
-</style>
-</head>
-<body>
-<div class="grid-bg"></div>
-
-<div class="ethics">
-  <b>STAY LEGAL, STAY AUTHORIZED —</b> <span>every module below assumes you are testing systems you own or have explicit written permission to test.</span>
+<div class="callout danger">
+  <span class="ic">&#9888;&#65039;</span>
+  <div><b>Authorization first, always.</b> Every technique in this course is only legal and ethical against systems you own, or have explicit written authorization to test. Glacier ships with a deliberately vulnerable practice target (<code>tools/vulnerable_test_app.py</code>) specifically so you never need to point these tools at anything else while learning. Scanning a system without authorization is a crime in most jurisdictions, full stop.</div>
 </div>
 
+<h2>How this course is structured</h2>
+<p>Ten lessons, then a capstone. The first half is one lesson per tool &mdash; proxy, spider, repeater, fuzzer, active scanner &mdash; in the order you'd actually reach for them during an engagement. The second half moves from "using a tool" to "running an engagement": authentication, API scripting, methodology, and a final capstone where you run a full assessment against the practice target with no hand-holding.</p>
+
+<h2>What you'll need</h2>
+<ul>
+  <li>Glacier installed and running (covered in the next lesson if you haven't yet)</li>
+  <li>A terminal you're comfortable in &mdash; this course has you type real commands, not click "run" buttons. Typing the command and reading the actual output is most of how the reasoning sticks.</li>
+  <li>Python 3.10+ and the project's dependencies installed</li>
+</ul>
+
+<h2>How progress tracking works</h2>
+<p>Each lesson has a <em>Mark lesson complete</em> button at the bottom. That's stored in your browser only (nothing is sent anywhere) &mdash; it's there so you can track where you left off, not to prove anything to anyone.</p>
+
+<h2>The mindset</h2>
+<p>A scanner finds candidates. It doesn't replace understanding <em>why</em> something is vulnerable, and it can't tell you whether a finding actually matters in context. Every lesson in this course pairs "how to run the check" with "what the check is actually looking for and why that logic catches real bugs" &mdash; that second half is what separates operating a tool from doing the job.</p>
+""",
+    ),
+    dict(
+        id="02-setup", num="02", group="Foundations",
+        title="Installation & First Run",
+        dek="Get Glacier running, trust its proxy certificate, and boot the practice target.",
+        read="7 min",
+        body="""
+<h2>Install dependencies</h2>
+<div class="termblock"><div class="termbar"><span class="dot" style="background:#ff6b81"></span><span class="dot" style="background:#f2c14e"></span><span class="dot" style="background:#7fe0a0"></span><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> cd glacier
+<span class="prompt">$</span> pip install -r requirements.txt --break-system-packages
+<span class="prompt">$</span> chmod +x setup.sh start.sh
+<span class="prompt">$</span> ./setup.sh</pre></div>
+
+<p><code>setup.sh</code> installs mitmproxy's CA certificate generation and prepares the HUD. You only need to run it once per machine.</p>
+
+<h2>Trust the proxy's CA certificate</h2>
+<p>Glacier's proxy sits between your browser (or a scanned target) and the internet, decrypting HTTPS traffic to capture and scan it &mdash; the same technique mitmproxy and Burp Suite both use. For that to work without constant certificate warnings, your system needs to trust its CA cert once:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre>~/.mitmproxy/mitmproxy-ca-cert.pem</pre></div>
+<p>Import that file into your OS or browser's trusted certificate store. Every check in this course passes <code>ca_bundle</code> through automatically once that's done &mdash; you won't need to touch it again.</p>
+
+<h2>Start everything</h2>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> ./start.sh</pre></div>
+<p>This brings up the proxy, the API server, and the HUD. Give it a few seconds on first launch.</p>
+
+<h2>Boot the practice target</h2>
+<p>In a second terminal:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> cd glacier
+<span class="prompt">$</span> python3 tools/vulnerable_test_app.py
+<span class="comment"># now listening on http://127.0.0.1:5001</span></pre></div>
+<p>This is <strong>Northwind Supply Co.</strong> &mdash; a deliberately vulnerable storefront built specifically as Glacier's test range. Every lesson in this course (and the whole capstone) runs against it. Default login is <code>hackops</code> / <code>hackops</code>.</p>
+
+<div class="callout tip">
+  <span class="ic">&#128161;</span>
+  <div><b>Keep both terminals open.</b> You'll want the practice target's logs visible while you work &mdash; seeing a request land server-side while you fire it from Glacier is half of how this course builds intuition.</div>
+</div>
+
+<h2>A quick tour of the project layout</h2>
+<table>
+<tr><th>Folder</th><th>What lives there</th></tr>
+<tr><td><code>proxy/</code></td><td>The intercepting proxy addon + SQLite storage layer</td></tr>
+<tr><td><code>passive/</code></td><td>Passive scanner &mdash; inspects captured traffic, sends nothing extra</td></tr>
+<tr><td><code>spider/</code></td><td>Crawler &mdash; maps a site's structure</td></tr>
+<tr><td><code>active/</code></td><td>Active scanner &mdash; the injection/traversal/redirect checks</td></tr>
+<tr><td><code>repeater/</code></td><td>Manual request sender</td></tr>
+<tr><td><code>fuzzer/</code></td><td>Intruder-style payload fuzzer</td></tr>
+<tr><td><code>auth/</code></td><td>Session/login handling for authenticated scans</td></tr>
+<tr><td><code>api/</code></td><td>The FastAPI server tying all of the above together</td></tr>
+<tr><td><code>hud/</code></td><td>The Electron desktop GUI</td></tr>
+<tr><td><code>tools/vulnerable_test_app.py</code></td><td>Your practice range</td></tr>
+</table>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Open the HUD, then open <code>http://127.0.0.1:5001</code> in a browser configured to use Glacier's proxy. Browse a couple of pages on Northwind Supply Co. and confirm requests appear in the HUD's History tab. That confirms the whole chain &mdash; proxy, CA trust, and capture &mdash; is working before you touch anything else.</div>
+</div>
+""",
+    ),
+    dict(
+        id="03-proxy-passive", num="03", group="Core tools",
+        title="The Proxy & Passive Scanner",
+        dek="Everything else in Glacier starts here: capture traffic first, then decide what to do with it.",
+        read="8 min",
+        body="""
+<h2>Why the proxy comes first</h2>
+<p>Every other tool in Glacier &mdash; spider, active scanner, repeater, fuzzer &mdash; either routes through the proxy or reuses the traffic it captured. Point your browser's (or your target application's) proxy settings at Glacier's listener, and every request/response pair gets written to storage automatically, then handed to the passive scanner. This is the same "traffic capture is the foundation" architecture Burp Suite and OWASP ZAP both use.</p>
+
+<h2>What the passive scanner checks</h2>
+<p>Passive means <em>zero extra requests sent</em> &mdash; it only inspects traffic that would have happened anyway. That makes it safe to leave running constantly, even against production systems you're authorized to monitor. It flags:</p>
+<ul>
+  <li>Missing security headers (<code>Content-Security-Policy</code>, <code>X-Frame-Options</code>, <code>Strict-Transport-Security</code>, and friends)</li>
+  <li>Cookies missing <code>Secure</code> / <code>HttpOnly</code> / <code>SameSite</code></li>
+  <li>Server/technology disclosure in response headers</li>
+  <li>Leaked secrets &mdash; API keys, JWTs, and similar patterns appearing in responses</li>
+</ul>
+
+<h2>Try it</h2>
+<p>With the proxy configured and Northwind Supply Co. running, browse a few pages: the homepage, <code>/search?q=widget</code>, <code>/login</code>. Then open the HUD's <strong>Alerts</strong> tab.</p>
+<div class="callout tip">
+  <span class="ic">&#128161;</span>
+  <div>You should see at least a missing-security-headers finding, since the practice target doesn't set a CSP. That's expected &mdash; it's a real (if low-severity) finding, not a bug in the target.</div>
+</div>
+
+<h2>Reading the History tab</h2>
+<p>Every captured request/response is listed with method, URL, and status code. Click into any entry to see full headers and body &mdash; this is also where you'll grab requests to send to Repeater or Fuzzer in later lessons (there's a <em>Send to Repeater</em> / <em>Send to Fuzzer</em> button right there).</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Find the missing-headers finding for Northwind Supply Co. in Alerts, then click through to the underlying request in History. Being able to move fluidly between "here's a finding" and "here's the exact traffic that produced it" is a habit worth building early &mdash; you'll need it to write up findings professionally in Lesson 10.</div>
+</div>
+""",
+    ),
+    dict(
+        id="04-spider", num="04", group="Core tools",
+        title="The Spider",
+        dek="Map the site before you test it &mdash; you can't scan what you haven't found.",
+        read="6 min",
+        body="""
+<h2>What the spider actually does</h2>
+<p>Starting from one URL, it follows links and form actions, breadth-first, staying scoped to the same host you started on &mdash; so a crawl of your target won't wander off into analytics domains or social share links it happens to reference. Depth and page-count are both capped, since an uncapped crawl against a large site is its own kind of accidental denial-of-service.</p>
+
+<h2>Run a crawl</h2>
+<p>In the HUD's Spider tab, set:</p>
+<table>
+<tr><th>Field</th><th>What it controls</th></tr>
+<tr><td>Start URL</td><td><code>http://127.0.0.1:5001/</code></td></tr>
+<tr><td>Max depth</td><td>How many link-hops from the start URL to follow (2 is a reasonable default)</td></tr>
+<tr><td>Max pages</td><td>Hard cap on total pages visited &mdash; the safety valve</td></tr>
+</table>
+<p>Start it, and watch the discovered-URL count climb live. When it finishes, you'll have every URL Northwind Supply Co. links to &mdash; including the parameterized ones (<code>?id=</code>, <code>?q=</code>, <code>?host=</code>) that matter most for the next lesson's tools.</p>
+
+<h2>Why scope matters</h2>
+<p>The spider only follows links whose hostname matches the start URL's hostname exactly. That's not a limitation to work around &mdash; it's the thing that keeps an authorized crawl of <em>your</em> target from silently sending traffic to someone else's infrastructure just because their logo happened to link out. When you eventually point this at a target with a formal scope document, this is the boundary that document is describing in code.</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Run a crawl against Northwind Supply Co. and confirm the discovered list includes at least <code>/product?id=1</code>, <code>/search?q=widget</code>, and <code>/account</code>. You'll hand this exact list to the active scanner in Lesson 7.</div>
+</div>
+""",
+    ),
+    dict(
+        id="05-repeater", num="05", group="Core tools",
+        title="Repeater",
+        dek="The tool you'll use most: craft one request by hand, send it, look at exactly what came back, adjust, resend.",
+        read="6 min",
+        body="""
+<h2>What Repeater is for</h2>
+<p>Repeater sends exactly and only the request you build &mdash; no confirmation gate, because it's the same trust model as curl or your browser's dev tools: you typed it, it goes. That makes it the right tool for manual verification: you found something interesting via the spider or passive scanner, and now you want to poke at it by hand before escalating to an automated check.</p>
+
+<h2>Build your first request</h2>
+<p>From History, find a request to <code>/product?id=1</code> and click <em>Send to Repeater</em>. You'll see the method, URL, headers, and body all populated. Change the URL to:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">Repeater &rarr; URL field</span></div>
+<pre>http://127.0.0.1:5001/product?id=1'</pre></div>
+<p>That trailing single quote is a classic SQL injection probe. Hit Send.</p>
+
+<div class="callout tip">
+  <span class="ic">&#128161;</span>
+  <div>You should get back an HTTP 500 with a message containing <code>SQLSTATE</code>. That's a database driver error leaking into the response &mdash; the exact signature Lesson 7's automated SQLi check looks for. You just found the same bug by hand that the scanner will find automatically, which is the point: understand the manual technique first, and the automated check stops feeling like a black box.</div>
+</div>
+
+<h2>Every send is logged</h2>
+<p>Check the History panel inside the Repeater tab &mdash; every request you've sent from here is saved, so you can jump back to any earlier attempt and compare responses side by side. This matters more than it sounds: half of manual testing is "did that last change actually change the behavior, or did I imagine it," and having the exact prior response to diff against answers that immediately.</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> In Repeater, get a clean 500 with <code>SQLSTATE</code> in the body from <code>/product?id=1'</code>, then send <code>/product?id=1</code> (no quote) right after and confirm it's a normal 200. That contrast &mdash; one character changing the outcome &mdash; is the whole idea of injection testing in one comparison.</div>
+</div>
+""",
+    ),
+    dict(
+        id="06-fuzzer", num="06", group="Core tools",
+        title="Fuzzer",
+        dek="One request template, a wordlist, hundreds of variations &mdash; and a sortable results table to find the one that matters.",
+        read="8 min",
+        body="""
+<h2>From one request to many</h2>
+<p>Repeater tests one idea at a time. Fuzzer takes a request template with an insertion point marked by the literal text <code>FUZZ</code>, and fires one request per line of a wordlist, substituting each payload in turn. This is Glacier's answer to Burp's Intruder &mdash; and it's the tool for two very different jobs: brute-forcing (does <em>any</em> value in this list work?) and payload sweeping (does <em>any</em> injection variant get a different response than the others?).</p>
+
+<h2>Set up a run</h2>
+<p>From Repeater or History, click <em>Send to Fuzzer</em> on a request to <code>/product?id=1</code>, then change the URL to mark the insertion point:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">Fuzzer &rarr; URL field</span></div>
+<pre>http://127.0.0.1:5001/product?id=FUZZ</pre></div>
+<p>In the payloads box, enter a small numeric sweep, one per line:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">Fuzzer &rarr; Payloads</span></div>
+<pre>1
+2
+3
+99
+0
+-1</pre></div>
+<p>Check the authorization confirmation box &mdash; Fuzzer requires it, since a run is potentially hundreds or thousands of real requests to the target, not the single request Repeater sends. Click Start.</p>
+
+<h2>Reading results: sort, don't scroll</h2>
+<p>The results table isn't meant to be read top to bottom. Click the <strong>LENGTH</strong> column header: with six payloads that's easy to scan by eye, but on a real wordlist with hundreds of entries, sorting by response length is how you spot the one row that's a different size than all the others &mdash; that's usually your finding. Same idea for the <strong>STATUS</strong> column: sort it, and anything that isn't the dominant status code (say, forty <code>200</code>s and one lone <code>500</code>) jumps straight to the top or bottom.</p>
+
+<div class="callout tip">
+  <span class="ic">&#128161;</span>
+  <div><b>This is the actual skill Fuzzer teaches.</b> Anyone can fire a wordlist at a parameter. The professional move is reading the result set for the outlier &mdash; a response that's a different length, a different status, or took noticeably longer &mdash; rather than eyeballing each response body individually.</div>
+</div>
+
+<h2>Safety rails, on purpose</h2>
+<p>Fuzzer caps a single run at 1000 payloads and requires the explicit confirmation checkbox every time. That's not a limitation to route around &mdash; a fuzz run against a production target with no cap is indistinguishable from a denial-of-service attempt. If you need more coverage, run it in batches.</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Run the sweep above, sort by LENGTH, and identify which payload(s) produced a different-length response than the rest. Click that row and confirm what's actually different in the body.</div>
+</div>
+""",
+    ),
+    dict(
+        id="07-active-scanner", num="07", group="Active testing",
+        title="Active Scanner Deep Dive",
+        dek="Every check the active scanner runs, and exactly what evidence each one is actually looking for.",
+        read="12 min",
+        body="""
+<p>The active scanner tests every query parameter on a URL against a battery of checks. Understanding <em>what each check actually does</em> &mdash; not just its name &mdash; is what lets you trust a result, explain it in a report, and eventually write your own checks.</p>
+
+<h2>Reflected XSS</h2>
+<p>Injects a marker string with HTML-breaking characters into a parameter, then checks whether it comes back in the response <em>unescaped</em>. Try it directly:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> curl -s "http://127.0.0.1:5001/search?q=&lt;script&gt;test&lt;/script&gt;" | grep -o "&lt;script&gt;test&lt;/script&gt;"</pre></div>
+<p>If that comes back verbatim, the input reached the page without escaping &mdash; a real reflected XSS. Compare against <code>/safe-search</code>, which HTML-escapes the same input; the scanner correctly stays silent there.</p>
+
+<h2>SQL injection &mdash; three escalating techniques</h2>
+<table>
+<tr><th>Check</th><th>Signal it looks for</th><th>Target route</th></tr>
+<tr><td>Error-based</td><td>A database error message (e.g. containing <code>SQLSTATE</code>) leaking into the response</td><td><code>/product</code></td></tr>
+<tr><td>Boolean-blind</td><td>No error shown, but the page's <em>content</em> differs between a true and a false condition ("in stock" vs "not found")</td><td><code>/blind-product</code></td></tr>
+<tr><td>Time-blind</td><td>Neither an error nor a content difference &mdash; only a measurable response delay when a sleep condition is injected</td><td><code>/slow-product</code></td></tr>
+</table>
+<p>These run in escalating order precisely because each is progressively slower and noisier &mdash; the scanner only drops to boolean-blind if error-based finds nothing, and only to time-blind if boolean-blind finds nothing either.</p>
+
+<h2>Path traversal</h2>
+<p>Injects directory-traversal sequences at a few depths and encodings, then checks the response for content unique to <code>/etc/passwd</code> or <code>windows/win.ini</code> &mdash; files that are always present and harmless to read, but should never appear unless user input is reaching a file path unsanitized.</p>
+
+<h2>Command injection &mdash; why not just echo a marker</h2>
+<p>This is the check worth understanding in detail, because the obvious implementation has a real bug. A naive check injects <code>; echo MARKER</code> and looks for <code>MARKER</code> in the response. The problem: if the app <em>fails</em> to run the command and just echoes the raw, unexecuted input back in an error message ("no such host: <code>; echo MARKER</code>"), that string still shows up &mdash; a false positive with zero code execution involved.</p>
+<p>Glacier's check instead injects an <strong>arithmetic expression</strong> &mdash; multiply two fixed numbers, e.g. <code>; expr 6247 \\* 8351</code> &mdash; and looks for the <em>product</em> in the response. The raw payload text never contains that product; it can only appear if a shell genuinely evaluated the expression. Same idea extends to the blind variant, which uses <code>sleep</code> and measures timing instead of output, for cases where nothing is ever reflected at all.</p>
+
+<h2>Open redirect</h2>
+<p>Injects absolute and bypass-style URLs (protocol-relative <code>//host/</code>, a backslash variant some parsers normalize into a slash) and inspects the <code>Location</code> header directly, without following the redirect &mdash; the vulnerable route copies the parameter straight into <code>Location</code>; the safe route validates it stays on-site first.</p>
+
+<h2>Run it for real</h2>
+<p>In the HUD's Active Scanner tab, target <code>http://127.0.0.1:5001/product?id=1</code>, check the authorization box, and start. Watch the progress messages &mdash; they'll name each check as it runs, in the same escalating order described above.</p>
+
+<div class="callout warn">
+  <span class="ic">&#9888;&#65039;</span>
+  <div>The active scanner sends real, potentially destructive-looking test payloads. It requires the same explicit confirmation checkbox as Fuzzer, for the same reason.</div>
+</div>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Run a full active scan against every URL the spider discovered in Lesson 4. You should end up with findings across at least four different vulnerability classes. Keep this findings list &mdash; you'll turn it into a real report in Lesson 10.</div>
+</div>
+""",
+    ),
+    dict(
+        id="08-auth", num="08", group="Active testing",
+        title="Authenticating Scans",
+        dek="Most of the interesting attack surface on a real target sits behind a login. Here's how Glacier gets past it.",
+        read="8 min",
+        body="""
+<h2>Two ways to authenticate</h2>
+<p>Glacier's auth module supports both patterns you'll encounter in practice:</p>
+<table>
+<tr><th>Mode</th><th>How it works</th><th>When to use it</th></tr>
+<tr><td><code>cookie</code></td><td>Paste an already-authenticated <code>Cookie</code> or <code>Authorization</code> header directly &mdash; grabbed from a logged-in browser tab or an API client</td><td>Fastest option; works for any auth scheme since you're not modeling a login flow at all</td></tr>
+<tr><td><code>form</code></td><td>Give a login URL, field names, and credentials &mdash; Glacier submits the form once and keeps whatever session cookie the server sets, then re-submits automatically if the session dies mid-scan</td><td>Longer scans, where a pasted cookie would expire before the scan finishes</td></tr>
+</table>
+
+<h2>Try cookie mode first &mdash; it's the fastest path to understanding the concept</h2>
+<p>Log into Northwind Supply Co. in a browser proxied through Glacier, then grab the <code>Cookie</code> header from that authenticated request in History. In the Active Scanner or Spider's auth settings, choose <strong>cookie</strong> mode and paste it in as an <code>extra_headers_text</code> value, e.g.:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">auth config &rarr; cookie mode</span></div>
+<pre>Cookie: session=&lt;the value from your browser&gt;</pre></div>
+<p>Now scan <code>http://127.0.0.1:5001/account?id=1</code>. Without auth, that route returns 401 immediately. With the cookie applied, the scanner reaches the real, SQL-injectable order lookup behind it.</p>
+
+<h2>Form mode, and why auto-relogin matters</h2>
+<p>Form mode needs the login URL and the exact field names the form uses:</p>
+<table>
+<tr><th>Field</th><th>Value for Northwind</th></tr>
+<tr><td>login_url</td><td><code>http://127.0.0.1:5001/login</code></td></tr>
+<tr><td>username_field</td><td><code>username</code></td></tr>
+<tr><td>password_field</td><td><code>password</code></td></tr>
+<tr><td>username / password</td><td><code>hackops</code> / <code>hackops</code></td></tr>
+</table>
+<p>Set this up and scan <code>/account?id=1</code> again &mdash; Glacier logs in once at the start and reuses that session for every request in the scan.</p>
+<p>Here's the part that matters on real engagements: a scan generates a lot of traffic in a row, which is exactly the kind of volume that can trip a session timeout on the target itself. If you configure a <code>logged_out_indicator</code> &mdash; a string that only appears on a logged-out page, like <em>"Please sign in"</em> &mdash; Glacier checks for it on every single request. If it ever fires mid-scan, form mode re-submits the login automatically and retries the request that tripped it, so a session timeout thirty minutes into a long scan doesn't silently turn the rest of your results into false negatives.</p>
+<p>Cookie mode can detect the same thing, but can't fix it &mdash; there's no login flow to resubmit for a pasted token. If it expires, you'll see it flagged, and you'll need to paste a fresh one.</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Confirm you can reach and exploit the SQLi in <code>/account?id=1</code> using <em>either</em> auth mode. Then explain out loud (or to yourself) why an unauthenticated scan of that same URL can't find that finding at all &mdash; it's not that the scanner is weaker, it's that the vulnerable code path is never reached.</div>
+</div>
+""",
+    ),
+    dict(
+        id="09-api", num="09", group="Pro track",
+        title="Scripting Glacier's API",
+        dek="The HUD is a client. Everything it does goes through a REST API you can call directly.",
+        read="8 min",
+        body="""
+<h2>Why this matters</h2>
+<p>Clicking through the HUD is fine for one engagement. It doesn't scale to running the same battery of checks against fifty subdomains, or wiring Glacier into a CI pipeline that scans a staging environment on every deploy. The API is what makes that possible &mdash; the HUD is just one client of it.</p>
+
+<h2>Kick off a scan from the command line</h2>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> curl -s -X POST http://127.0.0.1:8090/api/active/start \\
+    -H 'Content-Type: application/json' \\
+    -d '{"url": "http://127.0.0.1:5001/product?id=1", "confirm": true}'
+<span class="comment"># {"job_id": "...", ...}</span></pre></div>
+<p>Poll it until it finishes:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> curl -s http://127.0.0.1:8090/api/active/status/&lt;job_id&gt;</pre></div>
+
+<h2>Chain the spider straight into the scanner</h2>
+<p>This is the pattern worth internalizing &mdash; it's the same thing the HUD's "pipeline" mode does under the hood, in about fifteen lines:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">recon_and_scan.py</span></div>
+<pre>import time, requests
+
+API = "http://127.0.0.1:8090"
+
+<span class="comment"># 1. crawl the target</span>
+spider = requests.post(f"{API}/api/spider/start", json={
+    "url": "http://127.0.0.1:5001/", "max_depth": 2, "max_pages": 50,
+}).json()
+
+while True:
+    status = requests.get(f"{API}/api/spider/status/{spider['job_id']}").json()
+    if status["status"] != "running":
+        break
+    time.sleep(1)
+
+urls = requests.get(f"{API}/api/spider/results/{spider['job_id']}").json()
+
+<span class="comment"># 2. active-scan every URL that actually has a parameter to test</span>
+for url in urls:
+    if "?" not in url:
+        continue
+    requests.post(f"{API}/api/active/start", json={"url": url, "confirm": True})</pre></div>
+
+<h2>Fuzzing from a script</h2>
+<p>The same principle applies to Fuzzer &mdash; useful when your wordlist lives in a file rather than something you'd paste into a textarea:</p>
+<div class="termblock"><div class="termbar"><span class="termlabel">terminal</span></div>
+<pre><span class="prompt">$</span> python3 -c "
+import requests
+payloads = open('wordlist.txt').read().splitlines()
+r = requests.post('http://127.0.0.1:8090/api/fuzz/start', json={
+    'method': 'GET', 'url': 'http://127.0.0.1:5001/product?id=FUZZ',
+    'payloads': payloads, 'confirm': True,
+})
+print(r.json())
+"</pre></div>
+
+<div class="callout tip">
+  <span class="ic">&#128161;</span>
+  <div>Every endpoint follows the same shape: <code>POST .../start</code> returns a <code>job_id</code>, <code>GET .../status/&lt;job_id&gt;</code> polls progress, <code>GET .../results/&lt;job_id&gt;</code> gets the output. Once you've scripted one tool this way, the rest follow the identical pattern.</div>
+</div>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Write and run the recon-and-scan script above against Northwind Supply Co. end to end, with no HUD open at all. Confirm findings show up via <code>GET /api/active/status/&lt;job_id&gt;</code>.</div>
+</div>
+""",
+    ),
+    dict(
+        id="10-methodology", num="10", group="Pro track",
+        title="Professional Methodology & Reporting",
+        dek="A scan is not an engagement. Here's the workflow the tools slot into, and how to write up what you find.",
+        read="9 min",
+        body="""
+<h2>The workflow, tools mapped to phases</h2>
+<table>
+<tr><th>Phase</th><th>What you're doing</th><th>Glacier tool</th></tr>
+<tr><td>1. Scope</td><td>Confirm exactly what's authorized &mdash; hosts, subdomains, out-of-scope systems, testing windows</td><td>&mdash; (this is a conversation, not a tool)</td></tr>
+<tr><td>2. Recon &amp; mapping</td><td>Discover the site's structure and attack surface</td><td>Spider, passive scanner</td></tr>
+<tr><td>3. Manual triage</td><td>Poke at anything that looks interesting before automating it</td><td>Repeater</td></tr>
+<tr><td>4. Automated testing</td><td>Systematically test every discovered parameter</td><td>Active scanner, Fuzzer</td></tr>
+<tr><td>5. Verification</td><td>Confirm each automated finding by hand &mdash; never ship an unverified finding</td><td>Repeater, again</td></tr>
+<tr><td>6. Reporting</td><td>Write up what you found so someone else can fix it</td><td>&mdash; (this lesson)</td></tr>
+</table>
+
+<h2>Why phase 5 exists &mdash; and isn't optional</h2>
+<p>An automated scanner optimizes for not missing things, which means it will occasionally flag something that isn't actually exploitable in context. Shipping an unverified finding to a client is how you lose credibility fast. Before anything goes in a report, reproduce it manually in Repeater and capture the exact request and response as evidence.</p>
+
+<h2>Anatomy of a good finding</h2>
+<p>Every finding Glacier's active scanner produces already has this shape &mdash; it's not an accident, it's the template a real report entry needs:</p>
+<table>
+<tr><th>Field</th><th>What goes here</th></tr>
+<tr><td>Name</td><td>Precise, not vague &mdash; "Reflected XSS in <code>q</code> parameter of <code>/search</code>," not "XSS issue"</td></tr>
+<tr><td>Risk</td><td>Impact if exploited, not just "how it was found" &mdash; consider auth requirements, data exposed, blast radius</td></tr>
+<tr><td>Evidence</td><td>The literal payload and the literal response snippet that proves it &mdash; not a description of what you saw, the actual text</td></tr>
+<tr><td>Steps to reproduce</td><td>Exact request, in enough detail that someone with zero context can confirm it themselves</td></tr>
+<tr><td>Remediation</td><td>Specific and actionable &mdash; "parameterize the query" beats "improve input validation"</td></tr>
+</table>
+
+<h2>Worked example</h2>
+<div class="termblock"><div class="termbar"><span class="termlabel">finding write-up</span></div>
+<pre><span class="comment">## SQL Injection in `id` parameter of /product (High)</span>
+
+<span class="comment">**Evidence:**</span>
+Request:  GET /product?id=1'
+Response: HTTP 500
+          "SQL error: SQLSTATE - unrecognized token: \\"'\\""
+
+<span class="comment">**Impact:**</span>
+The `id` parameter is concatenated directly into a SQL query with no
+parameterization. An attacker can read, modify, or delete arbitrary
+data in the products table, and depending on database permissions,
+potentially pivot further.
+
+<span class="comment">**Remediation:**</span>
+Use parameterized queries (e.g. `cursor.execute("... WHERE id = ?", (id,))`)
+everywhere user input reaches SQL. Do not attempt to sanitize the input
+string instead - parameterization is the actual fix.</pre></div>
+
+<p>Notice the evidence is the <em>literal</em> request and response, not a paraphrase. That's not a style preference &mdash; it's what lets a developer reproduce and fix the issue without needing you in the room.</p>
+
+<div class="callout checkpoint">
+  <span class="ic">&#9989;</span>
+  <div><b>Checkpoint.</b> Take the findings list from Lesson 7's checkpoint and write up two of them in this exact format. You'll use the rest in the capstone.</div>
+</div>
+""",
+    ),
+    dict(
+        id="11-capstone", num="11", group="Capstone",
+        title="The Northwind Engagement",
+        dek="A full, self-directed assessment. No walkthrough, no auto-run buttons &mdash; you run the engagement.",
+        read="Self-paced",
+        body="""
+<div class="callout warn">
+  <span class="ic">&#127919;</span>
+  <div><b>How this works.</b> You've been engaged (fictionally) to assess Northwind Supply Co. at <code>http://127.0.0.1:5001</code>. Below is an objectives checklist, not a walkthrough. Hints are hidden behind reveal toggles if you get stuck &mdash; use them sparingly. Nothing here auto-verifies your answers; the point is to actually run the commands and read the actual output yourself, the same as a real engagement.</div>
+</div>
+
+<h2>Scope</h2>
+<p><strong>In scope:</strong> <code>http://127.0.0.1:5001/*</code> only. <strong>Out of scope:</strong> everything else on your machine. <strong>Rules of engagement:</strong> this is your own local practice target &mdash; there's no real client here, but treat the exercise as if there were: verify everything manually before calling it a finding.</p>
+
+<h2>Objectives</h2>
+<ul class="objectives">
+  <li data-obj-id="recon"><span class="box"></span><span class="obj-text"><b>Recon &amp; mapping.</b> Run the spider against the target and produce a full list of discovered URLs, including every parameterized one.</span></li>
+  <li data-obj-id="xss"><span class="box"></span><span class="obj-text"><b>Reflected XSS.</b> Find and manually verify a reflected XSS finding via Repeater.</span></li>
+  <li data-obj-id="sqli-error"><span class="box"></span><span class="obj-text"><b>Error-based SQLi.</b> Find and manually verify an error-based SQL injection.</span></li>
+  <li data-obj-id="sqli-blind"><span class="box"></span><span class="obj-text"><b>Blind SQLi.</b> Find the route that suppresses the DB error, and confirm the injection still works using only the "in stock" / "not found" signal.</span></li>
+  <li data-obj-id="traversal"><span class="box"></span><span class="obj-text"><b>Path traversal.</b> Retrieve the contents of a file outside the intended uploads directory.</span></li>
+  <li data-obj-id="cmdi"><span class="box"></span><span class="obj-text"><b>Command injection.</b> Get a shell command's output reflected into a response.</span></li>
+  <li data-obj-id="redirect"><span class="box"></span><span class="obj-text"><b>Open redirect.</b> Confirm a redirect target you control ends up in the <code>Location</code> header.</span></li>
+  <li data-obj-id="auth"><span class="box"></span><span class="obj-text"><b>Authenticated finding.</b> Log in, then find and verify a vulnerability that's only reachable once authenticated.</span></li>
+  <li data-obj-id="fuzz"><span class="box"></span><span class="obj-text"><b>Fuzz sweep.</b> Run a Fuzzer job against any parameter with at least 10 payloads, sort the results, and identify the outlier.</span></li>
+  <li data-obj-id="report"><span class="box"></span><span class="obj-text"><b>Write it up.</b> Produce a findings report covering everything above, using Lesson 10's format.</span></li>
+</ul>
+<p class="hint">Click an objective to mark it complete once you've actually done it &mdash; this is tracked locally in your browser only.</p>
+
+<details class="hint"><summary>Hint &mdash; recon</summary><div class="hint-body">Every route you need is reachable from the homepage's link structure. If the spider isn't finding the parameterized routes, check your <code>max_depth</code>.</div></details>
+<details class="hint"><summary>Hint &mdash; SQLi (error-based)</summary><div class="hint-body">Revisit Lesson 5's exact probe. The route that leaks a driver error is the one that also shows a product name on success.</div></details>
+<details class="hint"><summary>Hint &mdash; command injection</summary><div class="hint-body">Look for a route that takes a "host" and runs a network diagnostic against it. Shell metacharacters (<code>;</code>, <code>&amp;&amp;</code>, <code>|</code>) are the lever.</div></details>
+<details class="hint"><summary>Hint &mdash; authenticated finding</summary><div class="hint-body">Revisit Lesson 8. The route only reachable while logged in has an <code>id</code> parameter that looks a lot like the one you already broke in the unauthenticated SQLi objective &mdash; is it guarded the same way?</div></details>
+
+<h2>Final report</h2>
+<p>Write your findings summary below &mdash; it's saved to your browser as you type, so you can leave and come back. Use Lesson 10's format for each finding: name, risk, evidence, steps to reproduce, remediation.</p>
+<textarea id="capstoneReport" class="reportbox" placeholder="## Finding 1: ...&#10;&#10;**Risk:** ...&#10;**Evidence:** ...&#10;**Steps to reproduce:** ...&#10;**Remediation:** ..."></textarea>
+
+<div class="callout tip">
+  <span class="ic">&#127942;</span>
+  <div><b>That's the course.</b> Everything above &mdash; recon, manual verification, automated testing, authenticated access, and a written report &mdash; is the same shape as a real web application assessment. The tools change target by target; the workflow doesn't.</div>
+</div>
+""",
+    ),
+]
+
+
+def lesson_nav_items():
+    return LESSONS
+
+
+def render_sidebar(active_id, root):
+    groups = {}
+    for l in LESSONS:
+        groups.setdefault(l["group"], []).append(l)
+    html = ['<aside class="sidebar">']
+    for group, items in groups.items():
+        html.append(f'<div class="group"><div class="group-label">{group}</div>')
+        for l in items:
+            cls = "lesson active" if l["id"] == active_id else "lesson"
+            html.append(
+                f'<a class="{cls}" href="{root}lessons/{l["id"]}.html" data-lesson-id="{l["id"]}">'
+                f'<span class="num">{l["num"]}</span><span>{l["title"]}</span>'
+                f'<span class="check"></span></a>'
+            )
+        html.append("</div>")
+    html.append("</aside>")
+    return "\n".join(html)
+
+
+def render_lesson(lesson, index):
+    root = "../"
+    prev_l = LESSONS[index - 1] if index > 0 else None
+    next_l = LESSONS[index + 1] if index < len(LESSONS) - 1 else None
+
+    nav_html = ""
+    if prev_l:
+        nav_html += (
+            f'<a class="navcard prev" href="{prev_l["id"]}.html">'
+            f'<div class="label">&larr; Previous</div><div class="title">{prev_l["title"]}</div></a>'
+        )
+    else:
+        nav_html += "<span></span>"
+    if next_l:
+        nav_html += (
+            f'<a class="navcard next" href="{next_l["id"]}.html">'
+            f'<div class="label">Next &rarr;</div><div class="title">{next_l["title"]}</div></a>'
+        )
+    else:
+        nav_html += (
+            '<a class="navcard next" href="../index.html">'
+            '<div class="label">Course complete &rarr;</div><div class="title">Back to course home</div></a>'
+        )
+
+    body = HEAD.format(title=lesson["title"], desc=lesson["dek"], root=root)
+    body += SITENAV.format(root=root)
+    body += f'<div class="course-layout">\n{render_sidebar(lesson["id"], root)}\n'
+    body += '<button class="sidebar-toggle" id="sidebarToggle">&#9776; Course lessons</button>\n'
+    body += '<main class="lesson-main">\n'
+    body += f'<div class="breadcrumbs"><a href="../index.html">Course</a> / {lesson["group"]}</div>'
+    body += '<div class="lesson-header">'
+    body += f'<span class="eyebrow">Lesson {lesson["num"]} &middot; {lesson["group"]}</span>'
+    body += f'<h1>{lesson["title"]}</h1>'
+    body += f'<p class="dek">{lesson["dek"]}</p>'
+    body += f'<div class="lesson-meta"><span>&#128337; {lesson["read"]} read</span></div>'
+    body += "</div>"
+    body += f'<div class="lesson-body">{lesson["body"]}</div>'
+    body += (
+        f'<button class="btn" id="markCompleteBtn" data-lesson-id="{lesson["id"]}" '
+        f'style="margin-top:8px;">Mark lesson complete</button>'
+    )
+    body += f'<div class="lesson-footer">{nav_html}</div>'
+    body += "</main></div>"
+    body += FOOT.format(root=root)
+    return body
+
+
+def render_index():
+    root = ""
+    groups = {}
+    for l in LESSONS:
+        groups.setdefault(l["group"], []).append(l)
+
+    module_html = ""
+    for group, items in groups.items():
+        module_html += f'<div class="section-head"><h2>{group}</h2></div><div class="modgrid">'
+        for l in items:
+            module_html += f"""
+            <a class="modcard" href="lessons/{l['id']}.html" data-lesson-id="{l['id']}">
+              <div class="modnum">{l['num']}</div>
+              <div>
+                <div class="modtitle">{l['title']}</div>
+                <div class="moddek">{l['dek']}</div>
+                <div class="modmeta">&#128337; {l['read']}<span class="check"></span></div>
+              </div>
+            </a>"""
+        module_html += "</div>"
+
+    html = HEAD.format(title="Course", desc="A hands-on companion course for Glacier - HackOps Academy's open-source web application security scanner.", root=root)
+    html += SITENAV.format(root=root)
+    html += f"""
 <header class="hero">
-  <svg class="peaks" viewBox="0 0 1280 260" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <polygon points="0,260 0,150 120,90 210,140 300,60 420,130 520,20 650,120 760,70 880,140 980,90 1090,150 1180,100 1280,150 1280,260" fill="#0e2233" opacity=".8"/>
-    <polygon points="0,260 0,190 180,150 340,175 480,130 640,175 800,150 960,185 1120,160 1280,185 1280,260" fill="#12384e" opacity=".85"/>
-    <polygon points="0,260 0,220 220,200 420,215 620,195 820,215 1020,200 1280,215 1280,260" fill="#1c6488" opacity=".6"/>
-  </svg>
-  <div class="hero-inner">
-    <div class="term-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>&nbsp;glacier@hackops — professional-track</div>
-    <h1 class="wordmark">GLACIER</h1>
-    <p class="lede">A hands-on course for running Glacier the way <em>a working pentester</em> would — proxy, spider, passive and active scanning, repeater, fuzzer, and the API, tied together into one repeatable methodology.</p>
-    <div class="cmd-line"><span class="p">$</span> ./start.sh <span class="c">--track professional</span><span class="cursor"></span></div>
-    <div class="hero-badges">
-      <span class="badge">13 modules</span>
-      <span class="badge">real API calls</span>
-      <span class="badge">safe practice range included</span>
-      <span class="badge">by HackOps Academy</span>
+  <div class="wrap">
+    <span class="eyebrow">Unofficial companion course</span>
+    <h1 class="herotitle">Learn Glacier<br>like it's your job.</h1>
+    <p class="herodek">Eleven lessons covering every tool in Glacier - proxy, spider, repeater, fuzzer, active scanner, and authenticated testing - plus the professional methodology that turns "ran a scan" into "delivered an assessment." Finishes with a self-directed capstone engagement against Glacier's own practice target.</p>
+    <div class="hero-actions">
+      <a class="btn" href="lessons/01-welcome.html">Start Lesson 01 &rarr;</a>
+      <a class="btn ghost" href="https://github.com/hackops-academy/glacier" target="_blank" rel="noopener">View Glacier on GitHub</a>
     </div>
+    <div class="progress-shell" style="max-width:420px;"><div class="progress-fill" id="courseProgressFill" style="width:0%"></div></div>
+    <div style="font-family:var(--mono); font-size:12px; color:var(--text-faint); margin-top:8px;" id="courseProgressLabel">0 / {len(LESSONS)} lessons complete</div>
   </div>
 </header>
 
-<div class="layout">
-  <nav class="toc" id="toc">
-    <div class="toc-track">
-      <div class="toc-crack" id="crack"></div>
-      <a class="toc-item" data-target="m0"><span class="n">00</span>Welcome &amp; ground rules</a>
-      <a class="toc-item" data-target="m1"><span class="n">01</span>Architecture &amp; setup</a>
-      <a class="toc-item" data-target="m2"><span class="n">02</span>The intercepting proxy</a>
-      <a class="toc-item" data-target="m3"><span class="n">03</span>Passive scanning</a>
-      <a class="toc-item" data-target="m4"><span class="n">04</span>The spider</a>
-      <a class="toc-item" data-target="m5"><span class="n">05</span>Active scanning</a>
-      <a class="toc-item" data-target="m6"><span class="n">06</span>Authenticated testing</a>
-      <a class="toc-item" data-target="m7"><span class="n">07</span>Repeater</a>
-      <a class="toc-item" data-target="m8"><span class="n">08</span>Fuzzer</a>
-      <a class="toc-item" data-target="m9"><span class="n">09</span>Findings triage</a>
-      <a class="toc-item" data-target="m10"><span class="n">10</span>Automation &amp; the API</a>
-      <a class="toc-item" data-target="m11"><span class="n">11</span>The full methodology</a>
-      <a class="toc-item" data-target="m12"><span class="n">12</span>Practice range &amp; next steps</a>
-    </div>
-  </nav>
+<div class="wrap">
+  <div class="callout danger" style="max-width:720px;">
+    <span class="ic">&#9888;&#65039;</span>
+    <div><b>Authorization only.</b> Every lesson runs against Glacier's own deliberately-vulnerable practice target, included specifically so you never need real targets to learn on. Never point these techniques at a system you don't own or don't have explicit written authorization to test.</div>
+  </div>
 
-  <main>
-
-    <section class="module m0" id="m0">
-      <div class="module-eyebrow"><span class="num">00</span>WELCOME</div>
-      <h2>What this course is</h2>
-      <p class="goal">Get oriented before you touch a target.</p>
-      <p>Glacier is a web application security scanner you built from scratch: an intercepting proxy, a passive scanner, a spider, an active scanner, a repeater, a fuzzer, and a findings tracker, all wired together and viewed through a native desktop HUD. This course doesn't re-explain what each button does — the README already does that. It teaches the <em style="color:var(--ice-bright);font-style:normal">order</em> and <em style="color:var(--ice-bright);font-style:normal">judgment</em> a professional applies when using it, so your findings are accurate, reproducible, and defensible.</p>
-      <div class="warn">
-        <b>SCOPE FIRST, ALWAYS</b>
-        Before module 01: confirm in writing what you're authorized to test, the testing window, and any systems explicitly out of scope. Glacier's active scanner and fuzzer send real payloads to the target — treat every engagement the way you'd treat one run with Burp Suite's active scanner or sqlmap.
-      </div>
-      <div class="tip"><b>WHO THIS IS FOR</b>Someone who has already run <code class="inline">./setup.sh</code> and <code class="inline">./start.sh</code> at least once and wants to move from "poking around" to a repeatable professional workflow.</div>
-    </section>
-
-    <section class="module" id="m1">
-      <div class="module-eyebrow"><span class="num">01</span>MODULE 01</div>
-      <h2>Architecture &amp; setup</h2>
-      <p class="goal">Understand what's actually running before you rely on it.</p>
-      <p>Every Glacier component talks to one shared SQLite database. The proxy and API are separate long-running processes so the API can serve the HUD live while the proxy keeps capturing in the background — that separation is why you can leave a proxy running for hours and query findings at any point without stopping it.</p>
-      <div class="flow">
-        <span class="box">proxy (mitmproxy addon)</span><span class="arrow">→</span><span class="box">SQLite</span><span class="arrow">←</span><span class="box">API (FastAPI)</span><span class="arrow">←</span><span class="box">HUD (Electron)</span>
-      </div>
-      <h3>Bring it up</h3>
-      <pre><span class="cm"># requires Python 3.10+, Node.js 18+, optionally tmux</span>
-<span class="kw">git</span> clone &lt;your-repo-url&gt;
-<span class="kw">cd</span> glacier
-./setup.sh      <span class="cm"># venv + Python/Node deps</span>
-./start.sh      <span class="cm"># proxy + API + HUD together in tmux panes</span></pre>
-      <p>No tmux? <code class="inline">start.sh</code> prints the three commands so you can run proxy, API, and HUD in separate terminals — do this once deliberately so you know what each process's logs look like on their own, before you ever rely on the combined tmux view during a real engagement.</p>
-      <div class="tip"><b>PRO HABIT</b>Open the HUD, point it at <code class="inline">http://localhost:8090</code>, hit Connect — then immediately check the proxy log for the mitmproxy CA cert path. You'll need it in the next module.</div>
-    </section>
-
-    <section class="module" id="m2">
-      <div class="module-eyebrow"><span class="num">02</span>MODULE 02</div>
-      <h2>The intercepting proxy</h2>
-      <p class="goal">Everything downstream depends on capture quality here.</p>
-      <p>Point your browser's HTTP/HTTPS proxy at <code class="inline">127.0.0.1:8081</code>, then visit <code class="inline">http://mitm.it</code> through that proxy once to install and trust mitmproxy's CA certificate — without it, every HTTPS request will fail TLS validation and you'll capture nothing.</p>
-      <h3>Professional habits at this stage</h3>
-      <ul>
-        <li>Use a dedicated browser profile for the engagement so unrelated tabs don't pollute your traffic table.</li>
-        <li>Walk the application manually first, touching every feature at least once, before you spider or scan anything — this is what gives the passive scanner real traffic to inspect and gives the spider real starting links.</li>
-        <li>Check the traffic table (<code class="inline">/api/traffic</code>) periodically to confirm requests are actually landing before you assume the proxy is working.</li>
-      </ul>
-      <div class="tip"><b>WHY MANUAL WALKTHROUGH MATTERS</b>The passive scanner never sends extra traffic — it only inspects what you feed it. A thin walkthrough means thin passive findings, full stop.</div>
-    </section>
-
-    <section class="module" id="m3">
-      <div class="module-eyebrow"><span class="num">03</span>MODULE 03</div>
-      <h2>Passive scanning</h2>
-      <p class="goal">Your free, zero-risk first pass — read it like a report, not a checklist.</p>
-      <p>The passive scanner runs automatically on every captured response, checking for missing security headers, insecure cookies, server version disclosure, verbose error messages, and exposed secrets (API keys, JWTs, private keys). It never sends anything extra, which makes it safe to run continuously and safe to run against production.</p>
-      <div class="grid-2">
-        <div class="kv"><div class="k">Trigger</div><div class="v">Automatic, on every captured response</div></div>
-        <div class="kv"><div class="k">Risk to target</div><div class="v">None — pure inspection</div></div>
-      </div>
-      <h3>What a professional does with this pass</h3>
-      <ol>
-        <li>Skim <code class="inline">/api/findings/summary</code> first for the shape of the app's baseline hygiene, not individual bugs.</li>
-        <li>Triage exposed secrets and verbose errors immediately — these can change the authorization conversation before you even get to active testing.</li>
-        <li>Treat missing headers as context, not headline findings, unless the client's report format calls for them explicitly.</li>
-      </ol>
-    </section>
-
-    <section class="module" id="m4">
-      <div class="module-eyebrow"><span class="num">04</span>MODULE 04</div>
-      <h2>The spider</h2>
-      <p class="goal">Build a real map of the attack surface before you scan anything.</p>
-      <p>The spider crawls from a starting URL, following links and form actions within the same host. Run it from a URL deep in the app (post-login, if relevant) rather than only the homepage, so it isn't limited to what's linked from the marketing pages.</p>
-      <pre><span class="kw">POST</span> /api/spider/start
-{ <span class="str">"start_url"</span>: <span class="str">"https://target.example.com/dashboard"</span> }
-
-<span class="kw">GET</span> /api/spider/status/{job_id}
-<span class="kw">GET</span> /api/spider/results/{job_id}</pre>
-      <div class="tip"><b>PRO HABIT</b>Review the discovered URL list before moving to active scanning. Prune obvious noise (logout links, external redirects, static assets) so you don't burn active-scan time and payloads on URLs that can't possibly be vulnerable.</div>
-    </section>
-
-    <section class="module" id="m5">
-      <div class="module-eyebrow"><span class="num">05</span>MODULE 05</div>
-      <h2>Active scanning</h2>
-      <p class="goal">On-demand, per-URL testing — the first place real payloads leave your machine.</p>
-      <p>Active scanning tests for reflected XSS, SQL injection (error-based, boolean-based blind, time-based blind), path traversal / local file inclusion, OS command injection (reflected and blind/time-based), and open redirect, using standard published detection methodology. It requires <code class="inline">confirm: true</code> — treat that flag as a deliberate decision each time, not a default you always set.</p>
-      <pre><span class="kw">POST</span> /api/active/scan
-{
-  <span class="str">"url"</span>: <span class="str">"https://target.example.com/search?q=test"</span>,
-  <span class="str">"confirm"</span>: true
-}
-<span class="kw">GET</span> /api/active/status/{job_id}</pre>
-      <table>
-        <tr><th>Class</th><th>Detection style</th></tr>
-        <tr><td>Reflected XSS</td><td>Reflection + context probing</td></tr>
-        <tr><td>SQL injection</td><td>Error-based, boolean-blind, time-blind</td></tr>
-        <tr><td>Path traversal / LFI</td><td>Payload + response inspection</td></tr>
-        <tr><td>OS command injection</td><td>Reflected and blind/time-based</td></tr>
-        <tr><td>Open redirect</td><td>Location header verification</td></tr>
-      </table>
-      <div class="warn"><b>TIME-BASED CHECKS NEED A QUIET TARGET</b>Blind SQLi and blind command injection rely on response timing. Running them against a target under heavy unrelated load will produce false positives and false negatives alike — schedule these during a stable window, and manually verify every timing-based hit in Repeater before reporting it.</div>
-      <div class="tip"><b>SCALE UP DELIBERATELY</b>Start active scanning against a handful of the most interesting spider results, not the entire discovered list at once. Confirm the scanner behaves as expected, then widen scope.</div>
-    </section>
-
-    <section class="module" id="m6">
-      <div class="module-eyebrow"><span class="num">06</span>MODULE 06</div>
-      <h2>Authenticated testing</h2>
-      <p class="goal">Most real findings live behind a login — don't skip this.</p>
-      <p>Pass an <code class="inline">auth</code> object to <code class="inline">/api/spider/start</code>, <code class="inline">/api/active/scan</code>, or <code class="inline">/api/pipeline/scan</code> so protected pages get discovered and tested instead of silently skipped.</p>
-      <h3>Cookie mode — fastest for a one-off session</h3>
-      <pre>{ <span class="str">"auth"</span>: { <span class="str">"mode"</span>: <span class="str">"cookie"</span>, <span class="str">"cookie_header"</span>: <span class="str">"session=abc123"</span> } }</pre>
-      <h3>Form mode — Glacier logs in itself, and re-authenticates on logout</h3>
-      <pre>{ <span class="str">"auth"</span>: {
-  <span class="str">"mode"</span>: <span class="str">"form"</span>,
-  <span class="str">"login_url"</span>: <span class="str">"https://target.example.com/login"</span>,
-  <span class="str">"username"</span>: <span class="str">"hackops"</span>, <span class="str">"password"</span>: <span class="str">"hackops"</span>,
-  <span class="str">"success_indicator"</span>: <span class="str">"Welcome back"</span>,
-  <span class="str">"logout_indicator"</span>: <span class="str">"Please log in"</span>
-} }</pre>
-      <p><code class="inline">success_indicator</code> and <code class="inline">logout_indicator</code> are optional but worth setting on every real engagement — they're what let a long pipeline scan notice it got logged out partway through and recover on its own, instead of quietly scanning the login page for an hour.</p>
-      <div class="tip"><b>VALIDATE AGAINST THE PRACTICE APP FIRST</b><code class="inline">tools/vulnerable_test_app.py</code> ships with a real login flow (<code class="inline">hackops</code> / <code class="inline">hackops</code>) and a protected <code class="inline">/account</code> page built for exactly this — confirm both auth modes work there before you point either at a client.</div>
-    </section>
-
-    <section class="module" id="m7">
-      <div class="module-eyebrow"><span class="num">07</span>MODULE 07</div>
-      <h2>Repeater</h2>
-      <p class="goal">Manual verification — where a hit becomes a finding.</p>
-      <p>Repeater is a manual request editor: craft a request from scratch or pull one straight from History, tweak method, headers, or body, resend, and compare responses. Every send is logged, so you can always jump back to an earlier attempt. Unlike the active scanner, Repeater has no confirmation gate — it sends exactly and only the one request you typed, the same trust model as curl or a browser's dev tools.</p>
-      <div class="tip"><b>PRO HABIT</b>Every active-scan or fuzzer hit should get one manual confirmation pass in Repeater before it goes in a report. Strip the scanner's exact payload down to the minimal change that still triggers the behavior — that minimal reproduction is what makes a finding credible to a developer reading your report.</div>
-    </section>
-
-    <section class="module" id="m8">
-      <div class="module-eyebrow"><span class="num">08</span>MODULE 08</div>
-      <h2>Fuzzer</h2>
-      <p class="goal">Batch testing for the parameter you already suspect.</p>
-      <p>Mark an injection point with the literal text <code class="inline">FUZZ</code> anywhere in a request — URL, header, or body — supply a wordlist, and one request goes out per payload. Results land in a sortable table (status code, response length, timing) so the one anomalous response in a batch of hundreds stands out. It's gated behind <code class="inline">confirm: true</code> and a 1000-payload hard cap, the same posture as the active scanner.</p>
-      <pre><span class="kw">POST</span> /api/fuzz/start
-{
-  <span class="str">"request_id"</span>: 42,
-  <span class="str">"wordlist"</span>: <span class="str">"common-params"</span>,
-  <span class="str">"confirm"</span>: true
-}
-<span class="kw">GET</span> /api/fuzz/results/{job_id}<span class="cm">?sort_by=length&amp;order=desc</span></pre>
-      <ul>
-        <li>Escalate straight into the Fuzzer with one click from History or Repeater once you've identified a promising parameter.</li>
-        <li>Sort by response length first to spot the outlier row, then by status code to separate real anomalies from expected auth/validation errors.</li>
-        <li><code class="inline">/api/fuzz/wordlists</code> lists the built-in wordlists and their sizes — check size against the 1000-payload cap before you start.</li>
-      </ul>
-    </section>
-
-    <section class="module" id="m9">
-      <div class="module-eyebrow"><span class="num">09</span>MODULE 09</div>
-      <h2>Findings triage</h2>
-      <p class="goal">Turn a pile of hits into a report someone can act on.</p>
-      <p>Glacier deduplicates repeated issues across many pages into grouped findings, with open / fixed / false-positive status tracking — use that grouping as your triage queue, not the flat list.</p>
-      <div class="grid-2">
-        <div class="kv"><div class="k">Flat list</div><div class="v"><code class="inline">GET /api/findings</code></div></div>
-        <div class="kv"><div class="k">Grouped by host+name+risk</div><div class="v"><code class="inline">GET /api/findings/grouped</code></div></div>
-        <div class="kv"><div class="k">Open counts by risk</div><div class="v"><code class="inline">GET /api/findings/summary</code></div></div>
-        <div class="kv"><div class="k">Bulk status update</div><div class="v"><code class="inline">PATCH /api/findings/bulk-status</code></div></div>
-      </div>
-      <h3>Example severity labeling in a report</h3>
-      <p><span class="sev crit">CRITICAL</span> &nbsp;<span class="sev high">HIGH</span> &nbsp;<span class="sev med">MEDIUM</span> &nbsp;<span class="sev info">INFO</span></p>
-      <div class="tip"><b>PRO HABIT</b>Mark a finding false-positive the moment Repeater fails to reproduce it — don't let unverified hits sit in "open" where they'll inflate a summary count someone else reads at face value.</div>
-    </section>
-
-    <section class="module" id="m10">
-      <div class="module-eyebrow"><span class="num">10</span>MODULE 10</div>
-      <h2>Automation &amp; the API</h2>
-      <p class="goal">Stop clicking through the HUD for repeatable work.</p>
-      <p>Every HUD action is just a call to the same FastAPI server, which means anything you can do by hand you can script. The pipeline endpoint is the one professionals lean on most: it crawls a site and auto-scans every discovered parameterized URL in one call.</p>
-      <pre><span class="kw">POST</span> /api/pipeline/scan
-{
-  <span class="str">"start_url"</span>: <span class="str">"https://target.example.com/"</span>,
-  <span class="str">"confirm"</span>: true,
-  <span class="str">"auth"</span>: { <span class="str">"mode"</span>: <span class="str">"cookie"</span>, <span class="str">"cookie_header"</span>: <span class="str">"session=abc123"</span> }
-}
-<span class="kw">GET</span> /api/pipeline/status/{job_id}</pre>
-      <p>Because it accepts the same optional <code class="inline">auth</code> object as the spider and active scanner, one authenticated pipeline call can replace an entire manual click-through session — reserve it for hosts you've already scoped and are confident about, since it commits to crawling <em style="font-style:normal;color:var(--ice-bright)">and</em> actively scanning in one step.</p>
-    </section>
-
-    <section class="module" id="m11">
-      <div class="module-eyebrow"><span class="num">11</span>MODULE 11</div>
-      <h2>The full methodology</h2>
-      <p class="goal">How the modules above chain into one engagement.</p>
-      <div class="flow" style="flex-direction:column;align-items:flex-start;">
-        <div class="box">1 — Confirm scope, testing window, out-of-scope systems in writing</div>
-        <div class="box">2 — Bring up proxy + API + HUD, install the mitmproxy CA cert</div>
-        <div class="box">3 — Walk the app manually (and authenticated) to seed real traffic</div>
-        <div class="box">4 — Read the passive findings; triage secrets/verbose-errors immediately</div>
-        <div class="box">5 — Spider from an authenticated deep URL; prune the discovered list</div>
-        <div class="box">6 — Active-scan the pruned list with <code class="inline" style="background:transparent;border:none;">confirm: true</code>, small batches first</div>
-        <div class="box">7 — Fuzz specific parameters you now suspect, sorted by length/status</div>
-        <div class="box">8 — Manually reproduce every hit in Repeater; minimize the payload</div>
-        <div class="box">9 — Triage in the findings view; mark false positives immediately</div>
-        <div class="box">10 — Export grouped findings into your report format</div>
-      </div>
-      <div class="tip"><b>WHAT SEPARATES A PROFESSIONAL RUN FROM A DEFAULT RUN</b>Not the tool settings — the discipline of steps 3, 8, and 9. Real traffic in, manual verification before it's trusted, and honest triage before it's reported. Everything else is configuration.</div>
-    </section>
-
-    <section class="module" id="m12">
-      <div class="module-eyebrow"><span class="num">12</span>MODULE 12</div>
-      <h2>Practice range &amp; next steps</h2>
-      <p class="goal">Rehearse the whole methodology somewhere nothing is at stake.</p>
-      <p><code class="inline">tools/vulnerable_test_app.py</code> is a small, deliberately vulnerable local Flask app — SQLi, XSS, path traversal, OS command injection, and open redirect endpoints, each paired with a properly-guarded "safe" endpoint as a negative control. Confirm the active scanner correctly flags the vulnerable endpoints <em style="font-style:normal;color:var(--ice-bright)">and</em> stays quiet on the safe ones before you ever point Glacier at something real.</p>
-      <pre><span class="kw">.</span> venv/bin/activate
-python3 tools/vulnerable_test_app.py   <span class="cm"># http://127.0.0.1:5001</span></pre>
-      <ol>
-        <li>Run the full methodology from Module 11 against the practice app end to end.</li>
-        <li>Deliberately break your own auth config (wrong <code class="inline">login_url</code>, wrong indicator strings) and watch how the pipeline scan fails, so you recognize it fast on a real engagement.</li>
-        <li>Time yourself. A professional's edge is mostly how quickly they move from "hit" to "verified, minimized, triaged."</li>
-      </ol>
-      <div class="tip"><b>NEXT</b>Once the practice range feels routine, run the same methodology against your own authorized lab targets before taking on client work.</div>
-    </section>
-
-  </main>
+  {module_html}
 </div>
+"""
+    html += FOOT.format(root=root)
+    return html
 
-<footer>
-  GLACIER — built by HackOps Academy · Apache License 2.0 · <a href="https://github.com/hackops-academy/glacier">View on GitHub</a>
-</footer>
 
-<script>
-(function(){
-  var items = Array.prototype.slice.call(document.querySelectorAll('.toc-item'));
-  var sections = items.map(function(i){ return document.getElementById(i.dataset.target); });
-  var crack = document.getElementById('crack');
+EXTRA_CSS = """
+/* ---- Landing page only ---- */
+.hero{padding:70px 0 44px; border-bottom:1px solid var(--line);}
+.hero .herotitle{font-size:44px; line-height:1.08; margin:14px 0 18px; letter-spacing:-1px;}
+.hero .herodek{color:var(--text-dim); font-size:16.5px; max-width:600px; line-height:1.7;}
+.hero-actions{display:flex; gap:14px; margin:26px 0 20px;}
+.section-head{margin:40px 0 18px;}
+.section-head h2{font-size:19px; margin:0; color:var(--text-dim); font-family:var(--mono); font-weight:500; text-transform:uppercase; letter-spacing:0.8px; font-size:12.5px;}
+.modgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin-bottom:8px;}
+.modcard{
+  display:flex; gap:16px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; text-decoration:none; color:var(--text); transition:border-color .15s, transform .15s;
+}
+.modcard:hover{border-color:rgba(95,227,224,0.4); transform:translateY(-2px); text-decoration:none;}
+.modcard .modnum{font-family:var(--mono); font-size:20px; color:var(--text-faint); font-weight:600; flex-shrink:0; width:30px;}
+.modcard .modtitle{font-weight:600; font-size:15px; margin-bottom:5px;}
+.modcard .moddek{color:var(--text-dim); font-size:13px; line-height:1.5;}
+.modcard .modmeta{display:flex; align-items:center; gap:10px; margin-top:10px; font-size:11.5px; color:var(--text-faint); font-family:var(--mono);}
+.modcard .modmeta .check{width:15px; height:15px; border-radius:4px; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:10px; color:transparent;}
+.modcard .modmeta .check.done{background:var(--ok); border-color:var(--ok); color:#052b13;}
+@media (max-width:720px){ .hero .herotitle{font-size:32px;} }
+"""
 
-  items.forEach(function(item){
-    item.addEventListener('click', function(e){
-      e.preventDefault();
-      var target = document.getElementById(item.dataset.target);
-      if(target){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
-      var toc = document.getElementById('toc');
-      toc.classList.remove('open');
-    });
-  });
 
-  function onScroll(){
-    var y = window.scrollY + 120;
-    var activeIdx = 0;
-    for(var i=0;i<sections.length;i++){
-      if(sections[i] && sections[i].offsetTop <= y){ activeIdx = i; }
-    }
-    items.forEach(function(it,idx){ it.classList.toggle('active', idx===activeIdx); });
+def main():
+    os.makedirs(LESSONS_DIR, exist_ok=True)
+    with open(os.path.join(OUT, "assets", "style.css"), "a") as f:
+        f.write("\n" + EXTRA_CSS)
 
-    var doc = document.documentElement;
-    var pct = (window.scrollY) / (doc.scrollHeight - window.innerHeight) * 100;
-    crack.style.setProperty('--progress', Math.min(100, Math.max(0,pct)) + '%');
-  }
-  document.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
+    with open(os.path.join(OUT, "index.html"), "w") as f:
+        f.write(render_index())
 
-  // mobile toc toggle: tap the nav bar itself to expand
-  var toc = document.getElementById('toc');
-  if(window.matchMedia('(max-width:900px)').matches){
-    toc.addEventListener('click', function(e){
-      if(e.target === toc){ toc.classList.toggle('open'); }
-    });
-  }
-})();
-</script>
-</body>
-</html>
+    for i, lesson in enumerate(LESSONS):
+        with open(os.path.join(LESSONS_DIR, lesson["id"] + ".html"), "w") as f:
+            f.write(render_lesson(lesson, i))
+
+    print(f"Generated index.html + {len(LESSONS)} lesson pages into {OUT}")
+
+
+if __name__ == "__main__":
+    main()
