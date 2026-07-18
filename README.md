@@ -77,7 +77,7 @@ Requires Python 3.10+, Node.js 18+, and (optionally) `tmux` for the
 one-command launch.
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/hackops-academy/glacier.git
 cd glacier
 ./setup.sh      # creates the venv, installs Python + Node dependencies
 ./start.sh      # launches proxy, API, and HUD together in tmux panes
