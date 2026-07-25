@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Deep water gradient for the hidden vulnerabilities -->
+    <linearGradient id="deepIce" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0066FF" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0A0F1D" stop-opacity="0.9"/>
+    </linearGradient>
+    
+    <!-- Glowing scan line representing the penetration testing scanner -->
+    <linearGradient id="scanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#00E5FF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle gradient for the text -->
+    <linearGradient id="textGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#B3E5FC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark tech background -->
+  <rect width="100%" height="100%" fill="#060913" rx="30"/>
+
+  <!-- Radar/Target Rings -->
+  <circle cx="250" cy="220" r="160" stroke="#121C33" stroke-width="2" fill="none" stroke-dasharray="4 16"/>
+  <circle cx="250" cy="220" r="100" stroke="#121C33" stroke-width="2" fill="none" stroke-dasharray="4 16"/>
+
+  <!-- Tactical Crosshairs -->
+  <path d="M 250,40 L 250,60 M 250,380 L 250,400 M 60,220 L 80,220 M 420,220 L 440,220" stroke="#00E5FF" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- === THE ICEBERG (Network Topology Style) === -->
+  
+  <!-- Bottom polygons (Hidden depth / Underlying backend) -->
+  <path d="M 120,200 L 250,360 L 170,200 Z" fill="url(#deepIce)" stroke="#0044BB" stroke-width="1"/>
+  <path d="M 380,200 L 250,360 L 330,200 Z" fill="url(#deepIce)" stroke="#0044BB" stroke-width="1"/>
+  <path d="M 170,200 L 250,360 L 250,230 Z" fill="#002266" stroke="#0055EE" stroke-width="1"/>
+  <path d="M 330,200 L 250,360 L 250,230 Z" fill="#001644" stroke="#0055EE" stroke-width="1"/>
+
+  <!-- Top polygons (Surface web / Frontend) -->
+  <path d="M 250,90 L 120,200 L 170,200 Z" fill="#55CCFF" stroke="#88DDFF" stroke-width="0.5"/>
+  <path d="M 250,90 L 380,200 L 330,200 Z" fill="#2299FF" stroke="#44BBFF" stroke-width="0.5"/>
+  <path d="M 250,90 L 170,200 L 250,230 Z" fill="#FFFFFF" stroke="#E0F7FA" stroke-width="0.5"/>
+  <path d="M 250,90 L 330,200 L 250,230 Z" fill="#AEEAFF" stroke="#B2EBF2" stroke-width="0.5"/>
+
+  <!-- Network Nodes (Vulnerability endpoints) -->
+  <circle cx="250" cy="90" r="4" fill="#FFFFFF"/>
+  <circle cx="120" cy="200" r="3" fill="#00E5FF"/>
+  <circle cx="170" cy="200" r="3" fill="#00E5FF"/>
+  <circle cx="330" cy="200" r="3" fill="#00E5FF"/>
+  <circle cx="380" cy="200" r="3" fill="#00E5FF"/>
+  <circle cx="250" cy="230" r="4" fill="#FFFFFF"/>
+  <circle cx="250" cy="360" r="4" fill="#00E5FF"/>
+
+  <!-- Connecting Data Lines -->
+  <path d="M 120,200 L 70,170" stroke="#00E5FF" stroke-width="1" stroke-dasharray="2 4"/>
+  <circle cx="70" cy="170" r="2" fill="#00E5FF"/>
+  <path d="M 380,200 L 430,170" stroke="#00E5FF" stroke-width="1" stroke-dasharray="2 4"/>
+  <circle cx="430" cy="170" r="2" fill="#00E5FF"/>
+
+  <!-- Waterline / Scanner Laser -->
+  <rect x="40" y="199" width="420" height="2" fill="url(#scanGlow)"/>
+
+  <!-- === TYPOGRAPHY === -->
+  <text x="254" y="435" font-family="'Courier New', Consolas, monospace" font-size="38" font-weight="bold" fill="url(#textGlow)" text-anchor="middle" letter-spacing="10">GLACIER</text>
+  <text x="250" y="465" font-family="'Courier New', Consolas, monospace" font-size="12" font-weight="normal" fill="#00E5FF" text-anchor="middle" letter-spacing="4">WEB PENTESTING FRAMEWORK</text>
+</svg>
