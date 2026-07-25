@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Glacier
+GenericName=Web Vulnerability Scanner
+Comment=Intercepting proxy, passive/active scanner, Repeater & Fuzzer - by HackOps Academy
+Exec=__LAUNCHER__
+Icon=glacier
+Terminal=false
+Categories=Network;Security;
+Keywords=pentest;security;proxy;scanner;fuzzer;burp;zap;vulnerability;
+StartupWMClass=glacier-hud

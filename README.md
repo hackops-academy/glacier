@@ -89,6 +89,22 @@ separate terminals instead.
 Once the HUD window opens, enter `http://localhost:8090` and hit
 **Connect**.
 
+### Installing as a desktop app (Kali / Debian-based)
+
+Prefer launching Glacier like Burp Suite or OWASP ZAP - a click in the
+Applications menu, no terminal, own icon? Use the installer instead of
+the manual quickstart above:
+
+```bash
+./packaging/install.sh
+```
+
+This installs Glacier per-user into `~/.local/share/glacier`, adds a
+**Glacier** entry to your desktop's Applications menu with its own
+icon, and installs a `glacier` command that starts the proxy + API in
+the background and opens the HUD. See [`packaging/README.md`](packaging/README.md)
+for details, and `./packaging/uninstall.sh` to remove it.
+
 New to Glacier? The [course](https://hackops-academy.github.io/glacier/)
 walks through this same quickstart step by step, then goes further into
 scoping, authenticated scanning, and a full professional methodology.
@@ -155,6 +171,7 @@ fuzzer/     Intruder-style batch request engine (engine.py)
 api/        FastAPI server tying it all together
 tools/      vulnerable_test_app.py - safe local test target
 hud/        Electron desktop GUI
+packaging/  Kali/Debian desktop install: installer, launcher, icon, .desktop entry
 ```
 
 ## API reference (brief)

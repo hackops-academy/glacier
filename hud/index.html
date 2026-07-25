@@ -192,6 +192,44 @@
   .toast.fadeout{animation:toastOut .3s ease forwards;}
   @keyframes toastIn{from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);}}
   @keyframes toastOut{to{opacity:0; transform:translateX(20px);}}
+
+  #connectOverlay{
+    position:fixed; inset:0; z-index:999; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, rgba(19,26,38,0.96), rgba(4,6,10,0.98));
+    backdrop-filter:blur(3px);
+  }
+  #connectOverlay.hidden{display:none;}
+  #connectCard{
+    width:440px; max-width:92vw; padding:36px 34px 30px; border-radius:6px;
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line); box-shadow:0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(95,215,224,0.06);
+    text-align:center; animation:cardIn .35s ease;
+  }
+  @keyframes cardIn{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  #connectCard .glyph{
+    width:52px; height:52px; margin:0 auto 16px; border-radius:50%;
+    border:2px solid var(--cyan-dim); display:flex; align-items:center; justify-content:center;
+    color:var(--cyan); font-size:22px; box-shadow:0 0 24px rgba(95,215,224,0.15);
+  }
+  #connectCard h1{font-size:20px; letter-spacing:4px; font-weight:700; margin-bottom:6px;}
+  #connectCard .sub{font-size:12px; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:24px;}
+  #connectCard input{
+    width:100%; background:var(--void); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:10px 12px; border-radius:3px; outline:none;
+    text-align:center; margin-bottom:14px;
+  }
+  #connectCard input:focus{border-color:var(--cyan);}
+  #connectCard button.primary{
+    width:100%; padding:11px; font-size:13px; letter-spacing:2px; border-radius:3px;
+  }
+  #connectCard .modalStatus{margin-top:14px; font-size:11px; color:var(--text-dim); min-height:14px;}
+  #connectCard .modalStatus.err{color:var(--crimson);}
+  #connectCard .spinner{
+    display:inline-block; width:10px; height:10px; border-radius:50%; border:2px solid var(--cyan-dim);
+    border-top-color:var(--cyan); animation:spin .7s linear infinite; margin-right:6px; vertical-align:-1px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #connectCard .autonote{margin-top:16px; font-size:10px; color:var(--text-dim); opacity:0.7;}
 </style>
 </head>
 <body>
@@ -199,9 +237,8 @@
 <div id="topbar">
   <div id="brand"><span class="dot" id="livedot"></span>GLACIER // HUD<span class="credit">made by HackOps Academy</span></div>
   <div id="connform">
-    <input type="text" id="apiUrl" value="http://localhost:8090" placeholder="glacier API base URL">
-    <button class="primary" id="btnConnect">CONNECT</button>
     <span id="connstatus">not connected</span>
+    <button class="ghost" id="btnReconnect" title="Change API URL / reconnect">RECONNECT</button>
     <button class="ghost" id="btnExport" title="Export a report">EXPORT</button>
     <button class="ghost danger" id="btnNewSession" title="Clear all captured data">NEW SESSION</button>
   </div>
@@ -437,6 +474,18 @@ test
 
 <div id="toasts"></div>
 
+<div id="connectOverlay" class="hidden">
+  <div id="connectCard">
+    <div class="glyph">&#9673;</div>
+    <h1>GLACIER</h1>
+    <div class="sub">web application security scanner</div>
+    <input type="text" id="modalApiUrl" value="http://localhost:8090" placeholder="glacier API base URL">
+    <button class="primary" id="btnModalConnect">CONNECT</button>
+    <div class="modalStatus" id="modalStatus"></div>
+    <div class="autonote">auto-connecting to the local Glacier API...</div>
+  </div>
+</div>
+
 <script>
 (function(){
   let BASE = '';
@@ -473,23 +522,77 @@ test
     $('connstatus').textContent = msg;
   }
 
-  $('btnConnect').addEventListener('click', () => {
-    BASE = $('apiUrl').value.trim();
-    if (!BASE) { toast('Enter an API URL', 'warn'); return; }
+  // ---- Connect modal (shown on open, auto-connects, falls back to manual) ----
+  function showConnectModal() { $('connectOverlay').classList.remove('hidden'); }
+  function hideConnectModal() { $('connectOverlay').classList.add('hidden'); }
+  function setModalStatus(html, isErr) {
+    const el = $('modalStatus');
+    el.innerHTML = html || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  function doConnect(url) {
+    BASE = url;
     setConnStatus(false, 'connecting...');
-    api('/api/sites').then(sites => {
+    return api('/api/sites').then(sites => {
       setConnStatus(true, 'connected');
-      toast('Connected to glacier API', 'success');
       renderSites(sites);
       loadOverview();
       loadAlerts();
       startLiveFeed();
       startAutoRefresh();
     }).catch(err => {
-      setConnStatus(false, 'failed');
-      toast('Connection failed: ' + err.message, 'error');
+      setConnStatus(false, 'not connected');
+      throw err;
+    });
+  }
+
+  // Tries to connect automatically a few times (the launcher starts the
+  // API in the background right before opening the HUD, so it may need
+  // a moment to finish booting). Only falls back to asking the user if
+  // every attempt fails.
+  function autoConnect(url, attemptsLeft, delayMs) {
+    setModalStatus('<span class="spinner"></span>connecting to ' + escapeHtml(url) + ' ...', false);
+    doConnect(url).then(() => {
+      hideConnectModal();
+      toast('Connected to glacier API', 'success');
+    }).catch(err => {
+      if (attemptsLeft > 1) {
+        setTimeout(() => autoConnect(url, attemptsLeft - 1, delayMs), delayMs);
+      } else {
+        setModalStatus('Could not reach the API automatically (' + err.message + ').', true);
+        $('connectCard').querySelector('.autonote').textContent =
+          'Check that Glacier is running, then hit Connect.';
+      }
+    });
+  }
+
+  $('btnModalConnect').addEventListener('click', () => {
+    const url = $('modalApiUrl').value.trim();
+    if (!url) { setModalStatus('Enter an API URL', true); return; }
+    setModalStatus('<span class="spinner"></span>connecting...', false);
+    doConnect(url).then(() => {
+      hideConnectModal();
+      toast('Connected to glacier API', 'success');
+    }).catch(err => {
+      setModalStatus('Connection failed: ' + err.message, true);
     });
   });
+  $('modalApiUrl').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('btnModalConnect').click();
+  });
+
+  $('btnReconnect').addEventListener('click', () => {
+    $('modalApiUrl').value = BASE || 'http://localhost:8090';
+    $('connectCard').querySelector('.autonote').textContent = 'auto-connecting to the local Glacier API...';
+    setModalStatus('', false);
+    showConnectModal();
+  });
+
+  // Kick off automatically as soon as the HUD opens - up to 6 tries,
+  // 700ms apart, no click required unless it genuinely can't connect.
+  showConnectModal();
+  autoConnect($('modalApiUrl').value.trim(), 6, 700);
 
   // ---- Live feed (WebSocket) ----
   function startLiveFeed() {
