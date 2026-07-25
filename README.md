@@ -22,7 +22,7 @@ methodology tying it all together.
 > or sqlmap: powerful, and only for authorized use.
 
 <p align="center">
-  <img src="packaging/icons/glacier.png" alt="Glacier — web application security scanner, made by HackOps Academy" width="100%">
+  <img src="packaging/icons/glacier.png" alt="Glacier — web application security scanner, made by HackOps Academy" width="50%">
 </p>
 
 ## What it does
