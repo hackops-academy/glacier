@@ -21,6 +21,10 @@ methodology tying it all together.
 > target — treat it the same way you'd treat Burp Suite's active scanner
 > or sqlmap: powerful, and only for authorized use.
 
+<p align="center">
+  <img src="packaging/icons/glacier.png" alt="Glacier — web application security scanner, made by HackOps Academy" width="100%">
+</p>
+
 ## What it does
 
 - **Intercepting proxy** — captures every request/response that flows
